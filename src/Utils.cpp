@@ -9,6 +9,7 @@
  * 
  */
 #include "Utils.h"
+#include <WiFiAP.h>
 
 /**
  * @brief 
@@ -65,6 +66,16 @@ String readRootCA(String fname){
   return rootCACertificate;
 }
 
+bool mountSd(int trial) {
+  int count = 0;
+  while (false == SD.begin(GPIO_NUM_4, SPI, 25000000) && count < trial) {
+    delay(200);
+    M5_LOGI("Wait for SD card (%d)", count);
+    count += 1;
+  }
+  if (count == trial) return false;
+  return true;
+}
 /**
  * @brief 
  * 
@@ -74,7 +85,8 @@ String readRootCA(String fname){
 String loadFile(String fname){
   File file;
   if(fname.startsWith("/sd")){
-    const char *filepath = fname.substring(3).c_str();
+    String path2 = fname.substring(3);
+    const char *filepath = path2.c_str();
     if (!SD.exists(filepath)) {
       M5_LOGE("File [%s] not found!(SD)", filepath);
       return "";
@@ -102,7 +114,9 @@ String loadFile(String fname){
  */
 bool isFileExists(String path) {
   if(path.startsWith("/sd")){
-    const char *filepath = path.substring(3).c_str();
+    String path2 = path.substring(3);
+    const char *filepath = path2.c_str();
+    //M5_LOGI("File: %s", filepath);
     return SD.exists(filepath);
   }else{
     const char *filepath = path.c_str();
@@ -118,7 +132,9 @@ bool isFileExists(String path) {
  */
 File getFileDescriptor(String path) {
   if(path.startsWith("/sd")){
-    const char *filepath = path.substring(3).c_str();
+    String path2 = path.substring(3);
+    const char *filepath = path2.c_str();
+    //M5_LOGI("\nOpenFile: %s, %s", filepath, path2.c_str());
     return SD.open(filepath, FILE_READ);
   }else{
     const char *filepath = path.c_str();
@@ -385,6 +401,74 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
     M5.Mic.end();
     return FRAME_SIZE*idx;
 }
+
+
+// WiFi接続 
+bool connect_wlan(const char* filepath) {
+  Serial.printf("\nConnect Wifi from: %s\n", filepath);
+    if(!isFileExists(String(filepath))) {
+      Serial.printf("WiFi config not found!: %s\n", filepath);
+      return false;
+    }
+    File file = getFileDescriptor(String(filepath));
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
+
+    if (error) {
+      Serial.printf("JSON Parse Error: %s\n", error.c_str());
+      return false;
+    }
+
+    JsonObject networks = doc.as<JsonObject>();
+    bool connected = false;
+
+    // JSON内の各エントリ（Home, Work, Mobile等）を順番に試行
+    for (JsonPair p : networks) {
+        String profileName = p.key().c_str();
+        const char* ssid = p.value()["essid"];
+        const char* pass = p.value()["passwd"];
+
+        Serial.printf("\nConnecting to %s...\n", profileName.c_str());
+        WiFi.begin(ssid, pass);
+        // タイムアウト判定
+        int timeout_sec = 5;
+        unsigned long startAttemptTime = millis();
+        while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout_sec * 1000) {
+            delay(500);
+        }
+
+        if (WiFi.status() == WL_CONNECTED) {
+          connected = true;
+          Serial.printf("Success IP: %s",  WiFi.localIP().toString().c_str());
+          return true;
+        } else {
+          Serial.println("\nTimeout / Failed.");
+          WiFi.disconnect();
+          delay(100);
+        }
+    }
+
+    if (connected == false) {
+      Serial.println("All Wifi attempts failed.");
+    }
+    return false;
+}
+
+void setupWifi(String conf_file){
+  if(connect_wlan(conf_file.c_str())) return;
+  conf_file = "/sd"+conf_file;
+  if(connect_wlan(conf_file.c_str())) return;
+  // setup access point
+  const char *ssid = "M5StackAP";
+  const char *password = "stack-chan";
+  WiFi.softAP(ssid, password);
+  IPAddress myIP = WiFi.softAPIP();
+  Serial.print("AP IP address: ");
+  Serial.println(myIP);
+  return;
+}
+
 
 int convertToInt(uint8_t *buff) {
   int val = buff[0] | buff[1] << 8 | buff[2] << 16 | buff[3] << 24;

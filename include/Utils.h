@@ -18,6 +18,7 @@
 
 void adjustTime();
 bool mountLitteFs();
+bool mountSd(int trial=3);
 String readRootCA(String fname);
 String loadFile(String fname);
 bool isFileExists(String path);
@@ -27,7 +28,7 @@ bool listDir(fs::FS &fs, const char* dirname, std::map<String, std::vector<Strin
 void saveFile(String fname, const char *contents);
 void removeFile(String path);
 void splitString(String src, std::vector<String>& delims, std::vector<String>& slist);
-
+void setupWifi(String conf_file);
 
 int convertToInt(uint8_t *buff);
 int convertToShort(uint8_t *buff);

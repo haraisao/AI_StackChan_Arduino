@@ -194,7 +194,8 @@ void callbackBtnC(){
     M5.Display.setTextColor(WHITE);
     //requestGemini("こんにちは");
   }else{
-    myServer.connect_wlan_from_sd("/wlan.json");
+    setupWifi("/wlan.json");
+    //myServer.connect_wlan_from_sd("/wlan.json");
     if (WiFi.status() == WL_CONNECTED) {
       beep(1);
       adjustTime();
@@ -218,13 +219,9 @@ void setup() {
   M5.Display.setTextSize(1);
   M5.Display.setBrightness(100);
 
-  int count=0;
-  while (false == SD.begin(GPIO_NUM_4, SPI, 25000000) && count < 3) {
-    delay(200);
-    M5_LOGI("Wait for SD card (%d)", count);
-    count += 1;
-  }
+  Serial.begin(115200);
 
+  mountSd();
   mountLitteFs();
   system_config.loadConfig(LittleFS, "/yaml/SC_BasicConfig.yaml");
   
@@ -238,13 +235,13 @@ void setup() {
               (ServoType)system_config.getServoType());
   delay(2000);
 
-  
   servo_interval_s* servo_interval = system_config.getServoInterval(AvatarMode::NORMAL);
   servo_interval_s* servo_interval_sing = system_config.getServoInterval(AvatarMode::SINGING);
 
+  // Wifi connection
+  //myServer.connect_wlan_from_sd("/wlan.json");
+  setupWifi("/wlan.json");
   // WebServer
-  myServer.connect_wlan_from_sd("/wlan.json");
-
   /// register REST-API
   myServer.registerApi("hello_api", handleHello);
   myServer.registerApi("face", handleFace);
