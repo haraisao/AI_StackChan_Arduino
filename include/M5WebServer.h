@@ -39,6 +39,12 @@ public:
         _registeredHandlers[name] = func;
         server.on("/"+name, HTTPMethod::HTTP_POST, func);
     }
+
+    void registerGetApi(String name, std::function<void()> func) {
+        _registeredHandlers[name] = func;
+        server.on("/"+name, func);
+    }
+    
     // api.yml を読み込んで URL パスと関数をバインド
     void loadApiConfig(const char* filepath);
 

@@ -13,6 +13,9 @@
 #include "GoogleSpeech.h"
 #include "Gemini.h"
 
+#include "M5CoreS3.h"
+#include "esp_camera.h"
+
 using namespace m5avatar;
 
 /// Extern functions
@@ -158,6 +161,61 @@ void handleSaveFile() {
   myServer.response(200, "application/json", responseData.c_str());
 }
 
+void handleCameraImage() {
+  String postBody=myServer.getBody();
+  JsonDocument doc;
+  DeserializationError error = deserializeJson(doc, postBody);
+
+  uint8_t *out_jpg;
+  size_t out_len;
+  if (CoreS3.Camera.get()) {
+      if(frame2jpg(CoreS3.Camera.fb, 20, &out_jpg, &out_len)) {
+        WiFiClient client = myServer.getServer().client();
+        String response = "HTTP/1.0 200 OK\r\n";
+        response += "Content-Type: image/jpeg\r\n";
+        response += "Content-Length: " + String(out_len) + "\r\n\r\n";
+        myServer.getServer().sendContent(response);
+        client.write(out_jpg, out_len);
+        free(out_jpg);
+        client.stop();
+      }
+      CoreS3.Camera.free();
+    }
+  myServer.response(500, "text/htm", "Error in capture image");
+}
+
+void handleStreamPath() {
+  WiFiClient client = myServer.getServer().client();
+  String response = "HTTP/1.1 200 OK\r\n";
+  response += "Content-Type: multipart/x-mixed-replace;boundary=frame\r\n\r\n";
+  myServer.getServer().sendContent(response);
+
+  uint8_t *out_jpg;
+  size_t out_len;
+  while (true) {
+    if (CoreS3.Camera.get()) {
+      if(frame2jpg(CoreS3.Camera.fb, 20, &out_jpg, &out_len)) {
+        response = "--frame\r\n";
+        response += "Content-Type: image/jpeg\r\n";
+        response += "Content-Length: " + String(out_len) + "\r\n\r\n";
+        myServer.getServer().sendContent(response);
+        client.write(out_jpg, out_len);
+        myServer.getServer().sendContent("\r\n\r\n");
+        free(out_jpg);
+        CoreS3.Camera.free();
+      } else {
+        Serial.println("Failed to convert the frame to JPEG");
+      }
+    } else {
+      Serial.println("Camera capture failed");
+    }
+    if (!client.connected()) {
+      break;
+    }
+    delay(200);
+  }
+}
+
 // Touch Buttons
 TouchButton touchButton;
 void callbackBtnA(){
@@ -238,6 +296,10 @@ void setup() {
   servo_interval_s* servo_interval = system_config.getServoInterval(AvatarMode::NORMAL);
   servo_interval_s* servo_interval_sing = system_config.getServoInterval(AvatarMode::SINGING);
 
+    // Camera
+  CoreS3.Camera.begin();
+  CoreS3.Camera.sensor->set_framesize(CoreS3.Camera.sensor, FRAMESIZE_QVGA);
+
   // Wifi connection
   //myServer.connect_wlan_from_sd("/wlan.json");
   setupWifi("/wlan.json");
@@ -252,7 +314,8 @@ void setup() {
   myServer.registerApi("get_file_list", handleGetFileList);
   myServer.registerApi("get_file", handleGetFile);
   myServer.registerApi("save_file", handleSaveFile);
-  
+  myServer.registerGetApi("camera_image", handleCameraImage);
+  myServer.registerGetApi("stream", handleStreamPath);
   //myServer.loadApiConfig("/api.yml");
   myServer.start();
 
