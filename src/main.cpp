@@ -79,23 +79,29 @@ void handleTalkGemini() {
     interactionId = "";
   } else {
     String msg = requestGeminiInteraction(postBody, interactionId, &avatar);
+    avatar.setInfoText("応答中",TFT_BLACK, TFT_GREEN);
     executeGoogleTTS(msg, &avatar);
   }
+  avatar.setInfoText("");
   myServer.response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
 void handleAsr() {
+  avatar.setInfoText("音声取得中",TFT_BLACK, TFT_ORANGE);
   String postBody=myServer.getBody();
   JsonDocument doc;
   DeserializationError error = deserializeJson(doc, postBody);
   int max_sec = doc["max_seconds"];
+  //M5_LOGI("---> %d", max_sec);
 
-  String result = executeGoogleAsr(max_sec);
+  String result = executeGoogleAsr(max_sec, &avatar);
   if (result.length() > 0) {
     M5_LOGI("Recognize: %s", result.c_str());
     String msg = requestGeminiInteraction(result, interactionId, &avatar);
+    avatar.setInfoText("応答中",TFT_BLACK, TFT_GREEN);
     executeGoogleTTS(msg, &avatar);
   }
+  avatar.setInfoText("");
   myServer.response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
@@ -163,7 +169,7 @@ void callbackBtnA(){
     M5.Display.setCursor(0,0);
   }else{
     beep(1);
-    avatar.init();
+    avatar.init(8);
   }
 }
 
@@ -174,7 +180,7 @@ void callbackBtnB(){
     avatar.setExpression(expressions[face]);
   }else{
     M5.Display.println("音声認識開始...");
-    String result = executeGoogleAsr(10);
+    String result = executeGoogleAsr(10, &avatar);
     M5.Display.printf("[%s]\n", result.c_str());
     M5_LOGI("Recognized:%s", result.c_str());
   }
@@ -275,7 +281,8 @@ void setup() {
 
   // Avatar and interaction_id
   interactionId=loadFile("/gemini_interaction");
-  avatar.init();
+  avatar.setBatteryIcon(true);
+  avatar.init(8);
   avatar.setSpeechFont(&fonts::lgfxJapanGothic_12);
 }
 
@@ -283,4 +290,6 @@ void loop() {
   M5.update();
   myServer.update();
   touchButton.update();
+  avatar.setBatteryStatus( M5.Power.isCharging(),
+    M5.Power.getBatteryLevel());
 }

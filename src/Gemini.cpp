@@ -38,14 +38,15 @@ String requestGemini(String txt, m5avatar::Avatar *avatar) {
     txt1["text"] = txt;
     p1["role"] = role;
 
-    JsonObject prompt_top = doc.createNestedObject("system_instruction"); 
+    //JsonObject prompt_top = doc.createNestedObject("system_instruction");
+    JsonObject prompt_top = doc["system_instruction"].to<JsonObject>(); 
     JsonObject p_txt = prompt_top["parts"].add<JsonObject>();
     p_txt["text"] = "あなたは、小さなスーパーロボット スタックチャンです。音声合成で応答するので、返答は20字以内でまとめてください。";
     prompt_top["role"] = "model";
 
     JsonObject tool = doc["tools"].add<JsonObject>();
-    JsonObject tool1 = tool.createNestedObject("url_context");
-    JsonObject tool2 = tool.createNestedObject("google_search");
+    JsonObject tool1 = tool["url_context"].to<JsonObject>();
+    JsonObject tool2 = tool["google_search"].to<JsonObject>();
 
     //doc["contents"].add(chatContent.c_str());
     String postData;
@@ -151,6 +152,7 @@ String requestGeminiInteraction(String txt, String& interactionId, m5avatar::Ava
 
 
   if (client) {
+    avatar->setInfoText("考え中", TFT_BLACK, TFT_YELLOW);
     String rootCA = readRootCA("google.pem");
     if(rootCA == ""){
       client->setInsecure();
@@ -168,7 +170,8 @@ String requestGeminiInteraction(String txt, String& interactionId, m5avatar::Ava
       // gemini-3-flash-preview
       // gemini-2.5-flash
       // gemini-2.5-flash-lite
-      doc["model"] = "gemini-2.5-flash-lite";
+      //doc["model"] = "gemini-2.5-flash-lite";
+      doc["model"] = "gemini-3.1-flash-lite-preview";
     }
     doc["input"] = txt;
     if(interactionId.length() > 0){
@@ -212,7 +215,7 @@ String requestGeminiInteraction(String txt, String& interactionId, m5avatar::Ava
         uint8_t* buffer = readResponseBody(client, contentLen, &buffLen);
 
         if (buffer != nullptr) {
-          StaticJsonDocument<200> filter;
+          JsonDocument filter;
           filter["id"] = true;
           filter["outputs"][0]["text"]=true;
 
@@ -255,5 +258,6 @@ String requestGeminiInteraction(String txt, String& interactionId, m5avatar::Ava
   } else {
     M5_LOGI("Unable to create client.");
   }
+  avatar->setInfoText("");
   return result;
 }

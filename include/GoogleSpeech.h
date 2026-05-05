@@ -17,4 +17,4 @@ void speakGoogleTTS(String text, m5avatar::Avatar *avatar=nullptr);
 void executeGoogleTTS(String msg,  m5avatar::Avatar *avatar=nullptr);
 String doGoogleASR(int16_t *audio_data, int audio_len);
 String requestGoogleAsr(unsigned char* b64_buffer, size_t b64_size);
-String executeGoogleAsr(int max_sec);
+String executeGoogleAsr(int max_sec, m5avatar::Avatar *avatar=nullptr);

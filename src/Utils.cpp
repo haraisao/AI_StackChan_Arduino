@@ -361,13 +361,15 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
         if (last_state != 0) {
             M5.Display.setCursor(0, 0);
             if (state > 0) {
-                M5.Display.fillScreen(TFT_GREEN);
-                M5.Display.setTextColor(TFT_BLACK);
+                //M5.Display.fillScreen(TFT_GREEN);
+                //M5.Display.setTextColor(TFT_BLACK);
                 //M5.Display.println("SPEECH DETECTED");
+                M5_LOGI("SPEECH DETECTED");
             } else {
-                M5.Display.fillScreen(TFT_BLACK);
-                M5.Display.setTextColor(TFT_WHITE);
+                //M5.Display.fillScreen(TFT_BLACK);
+                //M5.Display.setTextColor(TFT_WHITE);
                 //M5.Display.println("Silence...");
+                M5_LOGI("Silence...");
                 break;
             }
             last_state = 0;
@@ -379,7 +381,7 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
         }
 
     }
-    M5.Display.println("...END");
+    //M5.Display.println("...END");
     M5.Mic.end();
     return FRAME_SIZE*idx;
 }

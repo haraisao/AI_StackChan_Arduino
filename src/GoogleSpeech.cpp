@@ -278,19 +278,27 @@ String requestGoogleAsr(unsigned char* b64_buffer, size_t b64_size) {
   return payload;
 }
 
-String executeGoogleAsr(int max_sec) {
+String executeGoogleAsr(int max_sec, m5avatar::Avatar *avatar) {
   int silence = 2;
   int buff_len = SAMPLE_RATE*(max_sec+silence)*sizeof(int16_t);
+  //M5_LOGI("Try to alloc memory.(%d)", buff_len);
   int16_t* audio_data = (int16_t*)heap_caps_malloc(buff_len, MALLOC_CAP_SPIRAM);
-  memset(audio_data, 0, buff_len);
-
+  //M5_LOGI("Finish to alloc memory.(%d)", buff_len);
   String result="";
-  int audiolen = getSpeechFromMic(audio_data, max_sec);
-  if (audiolen > SAMPLE_RATE) { // over 1sec
-    result = doGoogleASR(audio_data, audiolen + SAMPLE_RATE*2);
-  } else {
-    M5_LOGI("Fain to recognize.");
+  if(audio_data){
+    memset(audio_data, 0, buff_len);
+    int audiolen = getSpeechFromMic(audio_data, max_sec);
+    //M5_LOGI("Finish to capture audio.(%d)", audiolen);
+    if (audiolen > SAMPLE_RATE) { // over 1sec
+      if(avatar) avatar->setInfoText("音声認識中",TFT_BLACK, TFT_GREEN);
+      result = doGoogleASR(audio_data, audiolen + SAMPLE_RATE*2);
+      if(avatar) avatar->setInfoText("");
+    } else {
+      M5_LOGI("Fain to recognize.");
+    }
+    free(audio_data);
+  }else{
+    M5_LOGE("Fain to alloc memory.(%d)", buff_len);
   }
-  free(audio_data);
   return result;
 }
