@@ -20,8 +20,6 @@
 
             async function request_asr(){
                 var max_seconds = Number(document.getElementById("max_seconds").value);
-                var max_count = Number(document.getElementById("max_count").value);
-                var threshold = Number(document.getElementById("threshold").value);
                 var url ="/asr"
 
                 const response = await fetch(url,{
@@ -29,7 +27,7 @@
                     headers: {
                         "Content-Type": "text/plain;charset=utf-8",
                     },
-                    body: JSON.stringify({'max_seconds': max_seconds, 'max_count': max_count, 'threshold': threshold})
+                    body: JSON.stringify({'max_seconds': max_seconds})
                 }
                 );
                 console.log(response);
@@ -72,16 +70,13 @@
 
         <h1>音声認識</h1>
         最大録音時間（秒）:<input type="text" id="max_seconds" size="2" value="5"/><br>
-        発話区間推定　閾値:<input type="text" id="threshold" size="5" value="41"/><br>
-        発話区間推定　連続検出回数<input type="text" id="max_count" size="2" value="1"/><br>
         <button onclick="request_asr()">スタート</button>
 
         <h1>Gemini</h1>
         <textarea id="gemini" cols="80" rows="5"></textarea><br>
         <button onClick="request_gemini()">Message</button>
 
-        <h1>Info</h1>
-        <input id="message" value=""><button onClick="request_info()">Message</button>
+
         <hr>
         <a href="/">Back to Top</a>
     </body>
