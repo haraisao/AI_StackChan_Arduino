@@ -281,8 +281,14 @@ void setup() {
 
   mountSd();
   mountLitteFs();
-  system_config.loadConfig(LittleFS, "/yaml/SC_BasicConfig.yaml");
-  
+
+  myServer.setDocumentRoot("/html");
+
+  if(SD.exists("/yaml/SC_BasicConfig.yaml")){
+    system_config.loadConfig(SD, "/yaml/SC_BasicConfig.yaml");
+  }else{
+    system_config.loadConfig(LittleFS, "/yaml/SC_BasicConfig.yaml");
+  }
   // servo
   servo.begin(system_config.getServoInfo(AXIS_X)->pin,
               system_config.getServoInfo(AXIS_X)->start_degree,

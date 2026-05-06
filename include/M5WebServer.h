@@ -44,7 +44,14 @@ public:
         _registeredHandlers[name] = func;
         server.on("/"+name, func);
     }
-    
+
+    void setDocumentRoot(String top){
+        if(SD.exists(top)){
+            topDir = "/sd" + top;
+        }else{
+            topDir = top;
+        }
+    }
     // api.yml を読み込んで URL パスと関数をバインド
     void loadApiConfig(const char* filepath);
 
