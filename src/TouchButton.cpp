@@ -33,6 +33,7 @@ void TouchButton::update() {
   if(M5.Touch.isEnabled()) {
     auto dt = M5.Touch.getDetail();
     if(dt.isPressed()){
+      state=0;
       //M5_LOGI("Touch (%d, %d)", dt.x, dt.y);
       for (std::vector<RectArea>::const_iterator it = buttons.begin(), e = buttons.end(); it != e; ++it) {
         RectArea area = *it;
@@ -42,13 +43,42 @@ void TouchButton::update() {
         }
       }
     }
+
     if(dt.wasFlickStart()){
-      M5.Display.print("Flick Start");
+      //M5.Display.print("Flick Start");
       M5_LOGI("FlickStart(%d, %d)", dt.x, dt.y);
+      if(dt.y < 200){
+        flickFlag = 1;
+      }
     }
-    if(dt.wasFlicked()){
-      M5.Display.print("Flick");
+    /*
+    if(dt.isFlicking()){
+      M5_LOGI("Flicking(%d, %d)(%d, %d)", dt.x, dt.y, dt.distanceX(), dt.distanceY());
+    }
+      */
+    if(flickFlag && dt.wasFlicked()){
+      //M5.Display.print("Flick");
       M5_LOGI("Flicked(%d, %d)", dt.distanceX(), dt.distanceY());
+      int dx = dt.distanceX();
+      int dy = dt.distanceY();
+      if (dy < 50 && dy > -50){
+        if (dx > 100) {
+          M5_LOGI("Flick Right.");
+          state = FlickMotion::Right;
+        }else if(dx < -100){
+          M5_LOGI("Flick Left");
+          state = FlickMotion::Left;
+        }
+      } else if (dx < 30 && dx > -30){
+          if (dy > 60) {
+          M5_LOGI("Flick Down.");
+          state = FlickMotion::Down;
+        }else if(dy < -60){
+          M5_LOGI("Flick Up");
+          state = FlickMotion::Up;
+        }
+      }
+      flickFlag=0;
     }
   }
 }

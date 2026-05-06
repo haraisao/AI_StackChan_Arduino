@@ -352,4 +352,26 @@ void loop() {
   touchButton.update();
   avatar.setBatteryStatus( M5.Power.isCharging(),
     M5.Power.getBatteryLevel());
+
+  int state = touchButton.getState();
+  switch(state){
+    case FlickMotion::Right:
+      touchButton.resetState();
+      servo.moveDeltaXY(10, 0, 500);
+      break;
+    case FlickMotion::Left:
+      servo.moveDeltaXY(-10, 0, 500);
+      touchButton.resetState();
+      break;
+    case FlickMotion::Down:
+      touchButton.resetState();
+      servo.moveDeltaXY(0, 5, 500);
+      break;
+    case FlickMotion::Up:
+      servo.moveDeltaXY(0, -5, 500);
+      touchButton.resetState();
+      break;
+    default:
+      break;
+  }
 }

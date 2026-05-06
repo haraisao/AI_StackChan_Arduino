@@ -4,6 +4,11 @@
 #include <vector>
 #include <functional>
 
+enum FlickMotion {
+    Right = 1,
+    Left, Down, Up
+};
+
 
 class RectArea {
 private:
@@ -46,6 +51,8 @@ private:
    int delayTime = 200;
    std::map<String, std::function<void()>> _registeredHandlers;
    std::vector<RectArea> buttons;
+   int flickFlag = 0;
+   int state;
 
 public:
     TouchButton() {};
@@ -63,4 +70,7 @@ public:
     void createButton(int x, int y, int w, int h, std::function<void()> func);
     void updateOld();
     void update();
+
+    int getState(){ return state; }
+    void resetState(){ state = 0; }
 };
