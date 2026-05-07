@@ -308,6 +308,7 @@ void setup() {
 
   // Wifi connection
   //myServer.connect_wlan_from_sd("/wlan.json");
+  delay(500);
   setupWifi("/wlan.json");
   // WebServer
   /// register REST-API
