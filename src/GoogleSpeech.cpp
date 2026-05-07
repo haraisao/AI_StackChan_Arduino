@@ -100,8 +100,6 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
             if (audio_buf != nullptr) {
               mbedtls_base64_decode(audio_buf, audio_len, &audio_len, (const unsigned char*)b64_buffer, b64_len);
               free(b64_buffer);
-              //M5_LOGI("Start speaking");
-              //M5.Display.println("Playing Audio...");
 
               if (avatar) avatar->setSpeechText(text.c_str());
               M5.Speaker.playWav(audio_buf, audio_len);
@@ -110,9 +108,6 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
               int16_t* pcm_data = (int16_t*)audio_buf+44;  // shift wav header
               size_t total_samples = audio_len-44;
               const float MAX_RMS = 9000.0;
-              //M5_LOGI("Size: %d,  %d", convertToInt(&audio_buf[4])-44+8, total_samples);
-              //M5_LOGI("Sample: %d, Ch: %d", convertToInt(&audio_buf[24]), convertToShort(&audio_buf[22]));
-              //M5_LOGI("Block: %d, Bit:%d", convertToShort(&audio_buf[32]),  convertToShort(&audio_buf[34]));
               /// Spiking action...
               while (M5.Speaker.isPlaying()) {
                 M5.update();

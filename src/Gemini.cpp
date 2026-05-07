@@ -38,7 +38,6 @@ String requestGemini(String txt, m5avatar::Avatar *avatar) {
     txt1["text"] = txt;
     p1["role"] = role;
 
-    //JsonObject prompt_top = doc.createNestedObject("system_instruction");
     JsonObject prompt_top = doc["system_instruction"].to<JsonObject>(); 
     JsonObject p_txt = prompt_top["parts"].add<JsonObject>();
     p_txt["text"] = "あなたは、小さなスーパーロボット スタックチャンです。音声合成で応答するので、返答は20字以内でまとめてください。";
@@ -48,7 +47,6 @@ String requestGemini(String txt, m5avatar::Avatar *avatar) {
     JsonObject tool1 = tool["url_context"].to<JsonObject>();
     JsonObject tool2 = tool["google_search"].to<JsonObject>();
 
-    //doc["contents"].add(chatContent.c_str());
     String postData;
     serializeJson(doc, postData);
     M5_LOGI("==>[%s]", postData.c_str());
@@ -70,22 +68,7 @@ String requestGemini(String txt, m5avatar::Avatar *avatar) {
       unsigned char *reqBuff = (unsigned char *)postData.c_str();
       size_t bytes_sent= sendRequestBody(client, reqBuff, total_length);
       M5_LOGI("Waiting for response...");
-      /*
-      String response = "";
-      int contentLen = 500000;
-      while (client->connected()) {
-        String line = client->readStringUntil('\n');
-        if (line.startsWith("Content-Length:")) {
-            contentLen = line.substring(16).toInt();
-        }
-        response += line + "\n";
-        if (line == "\r") {
-          break;
-        }
-      }
-      int n = response.indexOf(" ");
-      String code = response.substring(n+1, response.indexOf(" ", n+1));
-      */
+
       int contentLen = 400000;
       bool chunk_flag = false;
       int return_code = 0;
@@ -103,9 +86,6 @@ String requestGemini(String txt, m5avatar::Avatar *avatar) {
             }
             delay(2); 
           }
-          //String payload = client->readString();
-          //payload = payload.substring(payload.indexOf("{"));
-          //M5_LOGI("Response: %s", payload.c_str());
           M5_LOGI("Response: %s", buffer);
         }
         
@@ -115,9 +95,7 @@ String requestGemini(String txt, m5avatar::Avatar *avatar) {
           const char *msg=response["candidates"][0]["content"]["parts"][0]["text"];
           result = String(msg);
         }
-        //M5.Display.printf("%s\n", msg);
         free(buffer);
-        //speakGoogleTTS(msg, avatar);
       } else {
         M5_LOGI("HTTP Error Code: %d", return_code);
       }
@@ -209,7 +187,7 @@ String requestGeminiInteraction(String txt, String& interactionId, m5avatar::Ava
       bool chunk_flag = false;
       int return_code = 0;
       String response = readHttpHeader(client, &return_code, &contentLen, &chunk_flag);
-      //M5_LOGI("%s", response.c_str());
+
       if (return_code == 200){
         int buffLen = 0;
         uint8_t* buffer = readResponseBody(client, contentLen, &buffLen);
@@ -238,8 +216,6 @@ String requestGeminiInteraction(String txt, String& interactionId, m5avatar::Ava
 
             if (idx == n){ idx=n-1; }
             String msg = response["outputs"][idx]["text"];
-            //free(buffer);
-            //executeGoogleTTS(msg, avatar);
             result=msg;
           }else{
             M5_LOGE("Json paser Error. %s", error.c_str());
