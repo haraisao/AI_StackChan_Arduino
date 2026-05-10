@@ -9,6 +9,7 @@
  * 
  */
 #include "GoogleSpeech.h"
+#include "Motion.h"
 
 void resetVolume();
 /**
@@ -17,7 +18,9 @@ void resetVolume();
  * @param text 
  * @param avatar 
  */
-void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
+static  SpiRamAllocator spiRamAllocatorTTS;
+
+void speakGoogleTTS(String text,  m5avatar::Avatar *avatar, StackchanSERVO *servo) {
   M5.Speaker.begin();
   M5.Speaker.setVolume(200);
   M5_LOGI("Requesting TTS...");
@@ -36,8 +39,8 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
 
     if (https.begin(*client, url)) {
       https.setTimeout(30000);
-      https.useHTTP10(true);
 
+      https.useHTTP10(true);
       https.addHeader("Content-Type", "application/json; charset=utf-8");
 
       // リクエスト用のJSONを作成
@@ -55,9 +58,10 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
       size_t reqBody_size = 0;
       uint8_t *reqBody_buff = serializeJsonSpiram(requestDoc, &reqBody_size);
 
+      if(servo) servo->moveDeltaXY(0, -10, 300);
       // POST送信
       int httpResponseCode = https.POST(reqBody_buff, reqBody_size);
-
+      if(servo) servo->moveDeltaXY(0, 10, 300);
       if (httpResponseCode == 200) {
         //M5.Display.println("TTS Success! Decoding...");
         WiFiClient* stream = https.getStreamPtr();
@@ -100,14 +104,18 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
             if (audio_buf != nullptr) {
               mbedtls_base64_decode(audio_buf, audio_len, &audio_len, (const unsigned char*)b64_buffer, b64_len);
               free(b64_buffer);
-
-              if (avatar) avatar->setSpeechText(text.c_str());
-              M5.Speaker.playWav(audio_buf, audio_len);
+              //M5_LOGI("Start speaking");
+              //M5.Display.println("Playing Audio...");
 
               unsigned long start_time = millis();
               int16_t* pcm_data = (int16_t*)audio_buf+44;  // shift wav header
               size_t total_samples = audio_len-44;
               const float MAX_RMS = 9000.0;
+              if (avatar){
+                avatar->setSpeechText(text.c_str());
+              }
+              //float dsample = total_samples/num;
+              M5.Speaker.playWav(audio_buf, audio_len);
               /// Spiking action...
               while (M5.Speaker.isPlaying()) {
                 M5.update();
@@ -125,12 +133,12 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
                   if(avatar) avatar->setMouthOpenRatio(ratio);
                 }
                 delay(20);
-                //----------------
               }
               if(avatar) {
                 avatar->setMouthOpenRatio(0.0);
                 avatar->setSpeechText("");
               }
+              //----------------
               //M5_LOGI("Stop speaking");
               free(audio_buf);
               //M5.Display.println("Done.");
@@ -157,25 +165,165 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
   }
 }
 
+
+void speakGoogleTTS2(String text,  m5avatar::Avatar *avatar, StackchanSERVO *servo) {
+  M5.Speaker.begin();
+  M5.Speaker.setVolume(200);
+  M5_LOGI("Requesting TTS...");
+  String apiKey = getApiKey("GOOGLE_SPEECH_KEY");
+  SpiRamAllocator spiRamAllocator;
+
+  WiFiClientSecure *client = new WiFiClientSecure;
+  if (client) {
+    String rootCA = readRootCA("google.pem");
+    client->setCACert(rootCA.c_str());
+    client->setInsecure();
+    client->setTimeout(20);
+
+    //String url = "https://texttospeech.googleapis.com/v1/text:synthesize?key=" + apiKey;
+
+    if (client->connect("texttospeech.googleapis.com", 443)) {
+
+      // リクエスト用のJSONを作成
+      JsonDocument requestDoc;
+      requestDoc["input"]["text"] = text;
+      requestDoc["voice"]["languageCode"] = "ja-JP";
+      requestDoc["voice"]["name"] = "ja-JP-Wavenet-B";
+      requestDoc["voice"]["ssmlGender"] = "FEMALE";
+      requestDoc["audioConfig"]["audioEncoding"] = "LINEAR16";
+      requestDoc["audioConfig"]["speakingRate"] = "1.0";
+      requestDoc["audioConfig"]["pitch"] = "1.0";
+      requestDoc["audioConfig"]["volumeGainDb"] = "5";
+      requestDoc["audioConfig"]["sampleRateHertz"] = "8000";
+
+      //size_t reqBody_size = 0;
+      //uint8_t *reqBody_buff = serializeJsonSpiram(requestDoc, &reqBody_size);
+      String request_buff;
+      serializeJson(requestDoc, request_buff);
+      int reqBody_size = request_buff.length();
+      const char *reqBody_buff = request_buff.c_str();
+
+      // --- Send Header
+      String url = "/v1/text:synthesize?key=" + apiKey;
+      client->println("POST " + url + " HTTP/1.0");
+      client->println("Host: texttospeech.googleapis.com");
+      client->println("Content-Type: application/json");
+      client->print("Content-Length: ");
+      client->println(reqBody_size);
+      client->println();
+
+      size_t bytes_sent= sendRequestBody(client, (unsigned char*)reqBody_buff, reqBody_size); 
+      M5_LOGI("Waiting for response...(%d, %d)", bytes_sent, reqBody_size);
+      //free(reqBody_buff);
+      servo->moveDeltaXY(0, -10, 100);
+      int res = 0;
+      int count = 0;
+      while(res == 0) {
+        res = client->available();
+        delay(200);
+      }
+      servo->moveDeltaXY(0, 10, 100);
+
+      int contentLen = 300000;
+      bool chunk_flag = false;
+      int httpResponseCode = 0;
+      String resheader = readHttpHeader(client, &httpResponseCode, &contentLen, &chunk_flag);
+      //M5_LOGI("%s", resheader.c_str());
+
+      if (httpResponseCode == 200) {
+        int buffLen = 0;
+        uint8_t* buff = readResponseBody(client, contentLen, &buffLen);
+
+        String buff_str = String((char *)buff);
+        int st = buff_str.indexOf("\"audioContent\"");
+        if(st > 0) {
+          st = buff_str.indexOf("\"",st+15);
+          int ed = buff_str.indexOf("\"", st+1);
+          int b64_len=ed-st-1;
+          uint8_t* buffer = buff+st+1;
+          // Decode audio data
+          size_t audio_len = 0;
+          mbedtls_base64_decode(nullptr, 0, &audio_len, (const unsigned char*)buffer, b64_len);
+          //M5_LOGI("Audio: %d, %d", audio_len, b64_len);
+          uint8_t* audio_buf = (uint8_t*)heap_caps_malloc(audio_len, MALLOC_CAP_SPIRAM);
+
+          if (audio_buf != nullptr) {
+            mbedtls_base64_decode(audio_buf, audio_len, &audio_len, (const unsigned char*)buffer, b64_len);
+
+            unsigned long start_time = millis();
+            int16_t* pcm_data = (int16_t*)audio_buf+44;  // shift wav header
+            size_t total_samples = audio_len-44;
+            const float MAX_RMS = 9000.0;
+            if (avatar){
+              avatar->setSpeechText(text.c_str());
+            }
+            //float dsample = total_samples/num;
+            M5.Speaker.playWav(audio_buf, audio_len);
+            /// Spiking action...
+            while (M5.Speaker.isPlaying()) {
+              M5.update();
+              //--------- Taking...
+              unsigned long elapsed_ms = millis() - start_time;
+              size_t current_sample = (elapsed_ms * 8000) / 1000;
+              if (current_sample + 160 < total_samples) {
+                int64_t sum_sq = 0;
+                for (int i = 0; i < 160; i++) {
+                  int16_t sample = pcm_data[current_sample + i];
+                  sum_sq += sample * sample;
+                }
+                float ratio = sqrt(sum_sq / 160.0) / MAX_RMS;
+
+                if(avatar) avatar->setMouthOpenRatio(ratio);
+              }
+              delay(20);
+            }
+            if(avatar) {
+              avatar->setMouthOpenRatio(0.0);
+              avatar->setSpeechText("");
+            }
+            free(audio_buf);
+
+          }else{
+            M5_LOGE("Memory allocation paser Error.");
+          }
+
+        } else {
+          M5_LOGE("No 'audioContent' found...");
+          free(buff);
+        }
+
+      } else {
+        M5_LOGE("HTTP Error: %d\n", httpResponseCode);
+      }
+
+    }
+    M5.Speaker.stop();
+    resetVolume();
+    M5.Speaker.end();
+    delete client;
+  }
+}
+
 /**
  * @brief 
  * 
  * @param msg 
  * @param avatar 
  */
-void executeGoogleTTS(String msg,  m5avatar::Avatar *avatar) {
+void executeGoogleTTS(String msg,  m5avatar::Avatar *avatar, StackchanSERVO *servo) {
   std::vector<String> msg_list;
-  std::vector<String> delims={ "。", "\n" };
+  std::vector<String> delims={ "。", "\n", "　", "  " };
   splitString(msg, delims, msg_list);
   for(int i=0; i<msg_list.size();i++){
     if(msg_list[i].length() > 2){
       M5_LOGI("Message: %s", msg_list[i].c_str());
-      speakGoogleTTS(msg_list[i], avatar);
+      speakGoogleTTS2(msg_list[i], avatar, servo);
     }else{
       M5_LOGI("Invalid String");
     }
     delay(3);
   }
+  if(servo) upMotion(servo, 1, 0);
 }
 
 /**
@@ -276,14 +424,14 @@ String requestGoogleAsr(unsigned char* b64_buffer, size_t b64_size) {
 String executeGoogleAsr(int max_sec, m5avatar::Avatar *avatar) {
   int silence = 2;
   int buff_len = SAMPLE_RATE*(max_sec+silence)*sizeof(int16_t);
-  //M5_LOGI("Try to alloc memory.(%d)", buff_len);
+  M5_LOGI("Try to alloc memory.(%d)", buff_len);
   int16_t* audio_data = (int16_t*)heap_caps_malloc(buff_len, MALLOC_CAP_SPIRAM);
-  //M5_LOGI("Finish to alloc memory.(%d)", buff_len);
+  M5_LOGI("Finish to alloc memory.(%d)", buff_len);
   String result="";
   if(audio_data){
     memset(audio_data, 0, buff_len);
     int audiolen = getSpeechFromMic(audio_data, max_sec);
-    //M5_LOGI("Finish to capture audio.(%d)", audiolen);
+    M5_LOGI("Finish to capture audio.(%d)", audiolen);
     if (audiolen > SAMPLE_RATE) { // over 1sec
       if(avatar) avatar->setInfoText("音声認識中",TFT_BLACK, TFT_GREEN);
       result = doGoogleASR(audio_data, audiolen + SAMPLE_RATE*2);

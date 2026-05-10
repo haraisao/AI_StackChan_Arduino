@@ -1,28 +1,11 @@
 /**
  * 
  */
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <SD.h>
-#include <Stackchan_system_config.h>
-#include <Stackchan_servo.h>
-//#include "M5AsyncWebServer.h"
-#include "M5WebServer.h"
-#include "TouchButton.h"
-#include "Utils.h"
-#include "GoogleSpeech.h"
-#include "Gemini.h"
-
-#include "M5CoreS3.h"
-#include "esp_camera.h"
+#include <StackChan.h>
 
 using namespace m5avatar;
 
-/// Extern functions
-void beep(int typ);
-
 // --- avater
-Avatar avatar;
 const Expression expressions[] = {
   Expression::Neutral,
   Expression::Sleepy,
@@ -35,185 +18,128 @@ static int face=0;
 std::map<String, int> faceType = {{"normal", 0},{"look_d", 1}, {"smile", 2},
   {"unhappy", 3}, {"surprise", 4}, {"anger", 5}};
 
+std::map<String, Expression> faceType2 = {{"Neutral", Expression::Neutral},
+  {"Sleepy", Expression::Sleepy}, {"Happy", Expression::Happy},
+  {"Sad", Expression::Sad}, {"Duobt", Expression::Doubt}, {"Angry", Expression::Angry}};
+
+/** Static */
+int motion_id=0;
+static String interactionId="";
+static int randNum = random(1, 51);
+
+/* Instances  */
+Avatar avatar;
 StackchanSERVO servo;
 StackchanSystemConfig system_config;
-
-static String interactionId="";
-
-// ------ WebServer
-//M5AsyncWebServer myServer(80, "/html");
 M5WebServer myServer(80, "/html");
-void handleHello() {
-    myServer.response(200, "application/json", "{\"message\":\"Hello API\"}");
-}
 
-void handleFace() {
-  String postBody=myServer.getBody();
+// POST
+void handleFace(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
+  String postBody = srv->getBody();
   if(faceType.count(postBody)) {
     avatar.setExpression(expressions[faceType[postBody]]);
   }else{
     avatar.setExpression(expressions[0]);
   }
-  myServer.response(200, "application/json", "{\"result\":\"OK\"}");
+  srv->response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
-void handleTexttospeech() {
-  String postBody=myServer.getBody();
-  speakGoogleTTS(postBody, &avatar);
-  myServer.response(200, "application/json", "{\"result\":\"OK\"}");
+void handleTexttospeech(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
+  String postBody=srv->getBody();
+  speakGoogleTTS2(postBody, &avatar, &servo);
+  srv->response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
-void handleMove() {
-  String postBody=myServer.getBody();
+void handleMove(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
   JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, postBody);
+  DeserializationError error = srv->requestJson(doc);
   int x = doc["x"];
   int y = doc["y"];
   int sp = doc["sp"];
   servo.moveXY(x+90, 90-y, sp);
-  myServer.response(200, "application/json", "{\"result\":\"OK\"}");
+  srv->response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
-void handleTalkGemini() {
-  String postBody=myServer.getBody();
-  //requestGemini(postBody, &avatar);
+void handleTalkGemini(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
+  String postBody=srv->getBody();
 
   if(postBody == "reset"){
     interactionId = "";
   } else {
-    String msg = requestGeminiInteraction(postBody, interactionId, &avatar);
+    String msg = requestGeminiInteraction(postBody, interactionId, &avatar, &servo);
+    //M5_LOGI(">>> %s",msg.c_str()); 
     avatar.setInfoText("応答中",TFT_BLACK, TFT_GREEN);
-    executeGoogleTTS(msg, &avatar);
+    JsonDocument doc;
+    DeserializationError error = deserializeJson(doc, msg);
+    if (!error){
+      if(doc["type"] == "text"){
+        executeGoogleTTS(doc["text"], &avatar, &servo);
+      } else {
+        //M5_LOGI(">>%s",msg.c_str());
+        String result="{\"result\": \"Finished\"}";
+        String func = doc["name"]; 
+        String callId = doc["id"];
+        if(func == "stackchan:face"){
+          String exp = doc["arguments"]["expression"];
+          //M5_LOGI("Face: %s", exp.c_str());
+          avatar.setExpression(faceType2[exp]);
+        }
+        msg = responseGeminiMpc(result, interactionId, func, callId, &avatar, &servo);
+        //M5_LOGI(">>> %s",msg.c_str());
+        error = deserializeJson(doc, msg);
+        if (!error){
+          executeGoogleTTS(doc["text"], &avatar, &servo);
+        }
+      }
+    }else{
+
+    }
   }
   avatar.setInfoText("");
-  myServer.response(200, "application/json", "{\"result\":\"OK\"}");
+  srv->response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
-void handleAsr() {
+void handleAsr(void *arg) {
   avatar.setInfoText("音声取得中",TFT_BLACK, TFT_ORANGE);
-  String postBody=myServer.getBody();
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
   JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, postBody);
+  DeserializationError error = srv->requestJson(doc);
   int max_sec = doc["max_seconds"];
-  //M5_LOGI("---> %d", max_sec);
 
   String result = executeGoogleAsr(max_sec, &avatar);
   if (result.length() > 0) {
     M5_LOGI("Recognize: %s", result.c_str());
-    String msg = requestGeminiInteraction(result, interactionId, &avatar);
+  
+    String msg = requestGeminiInteraction(result, interactionId, &avatar, &servo);
     avatar.setInfoText("応答中",TFT_BLACK, TFT_GREEN);
-    executeGoogleTTS(msg, &avatar);
+    JsonDocument res;
+    DeserializationError error = deserializeJson(res, msg);
+    if (!error){
+      if(res["type"] == "text"){
+        executeGoogleTTS(res["text"], &avatar);
+      }
+    }
   }
   avatar.setInfoText("");
-  myServer.response(200, "application/json", "{\"result\":\"OK\"}");
+  srv->response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
-void handleGetFileList() {
-  String postBody=myServer.getBody();
+void handleCommand(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
   JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, postBody);
-  String dirname = doc["dir_name"];
-  std::map<String, std::vector<String>> flist;
-  listDir(LittleFS, dirname.c_str(), flist);
-  JsonDocument response;
-  Serial.println("Dirs:");
-  for(const String& s : flist["dir"]){
-    response["dir_list"].add(s);
-    Serial.println(s);
-  }
-  Serial.println("Files:");
-  for(const String& s : flist["file"]){
-    response["file_list"].add(s);
-    Serial.println(s);
-  }
-
-  String responseData;
-  serializeJson(response, responseData);
-  myServer.response(200, "application/json", responseData.c_str());
-}
-
-void handleGetFile() {
-  String postBody=myServer.getBody();
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, postBody);
-  String fname = doc["file_name"];
-  String content = loadFile(fname);
-
-  JsonDocument response;
-  response["data"] = content;
-  String responseData;
-  serializeJson(response, responseData);
-  myServer.response(200, "application/json", responseData.c_str());
-}
-
-void handleSaveFile() {
-  String postBody=myServer.getBody();
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, postBody);
-  String fname = doc["file_name"];
+  DeserializationError error = srv->requestJson(doc);
+  String cmd = doc["cmd"];
   String data = doc["data"];
-  saveFile(fname, data.c_str());
-
+  if (cmd == "message"){
+    avatar.setSpeechText(data.c_str());
+  }
   JsonDocument response;
   response["result"] = "OK";
-  String responseData;
-  serializeJson(response, responseData);
-  myServer.response(200, "application/json", responseData.c_str());
-}
-
-void handleCameraImage() {
-  String postBody=myServer.getBody();
-  JsonDocument doc;
-  DeserializationError error = deserializeJson(doc, postBody);
-
-  uint8_t *out_jpg;
-  size_t out_len;
-  if (CoreS3.Camera.get()) {
-      if(frame2jpg(CoreS3.Camera.fb, 20, &out_jpg, &out_len)) {
-        WiFiClient client = myServer.getServer().client();
-        String response = "HTTP/1.0 200 OK\r\n";
-        response += "Content-Type: image/jpeg\r\n";
-        response += "Content-Length: " + String(out_len) + "\r\n\r\n";
-        myServer.getServer().sendContent(response);
-        client.write(out_jpg, out_len);
-        free(out_jpg);
-        client.stop();
-      }
-      CoreS3.Camera.free();
-    }
-  myServer.response(500, "text/htm", "Error in capture image");
-}
-
-void handleStreamPath() {
-  WiFiClient client = myServer.getServer().client();
-  String response = "HTTP/1.1 200 OK\r\n";
-  response += "Content-Type: multipart/x-mixed-replace;boundary=frame\r\n\r\n";
-  myServer.getServer().sendContent(response);
-
-  uint8_t *out_jpg;
-  size_t out_len;
-  while (true) {
-    if (CoreS3.Camera.get()) {
-      if(frame2jpg(CoreS3.Camera.fb, 20, &out_jpg, &out_len)) {
-        response = "--frame\r\n";
-        response += "Content-Type: image/jpeg\r\n";
-        response += "Content-Length: " + String(out_len) + "\r\n\r\n";
-        myServer.getServer().sendContent(response);
-        client.write(out_jpg, out_len);
-        myServer.getServer().sendContent("\r\n\r\n");
-        free(out_jpg);
-        CoreS3.Camera.free();
-      } else {
-        Serial.println("Failed to convert the frame to JPEG");
-      }
-    } else {
-      Serial.println("Camera capture failed");
-    }
-    if (!client.connected()) {
-      break;
-    }
-    delay(200);
-  }
+  srv->response(200, "application/json", response);
 }
 
 // Touch Buttons
@@ -225,6 +151,7 @@ void callbackBtnA(){
     delay(300);
     M5.Display.clearDisplay();
     M5.Display.setCursor(0,0);
+    M5.Display.println("モード1");
   }else{
     beep(1);
     avatar.init(8);
@@ -237,53 +164,46 @@ void callbackBtnB(){
     face = (face+1) % 6;
     avatar.setExpression(expressions[face]);
   }else{
+    /**
     M5.Display.println("音声認識開始...");
     String result = executeGoogleAsr(10, &avatar);
     M5.Display.printf("[%s]\n", result.c_str());
     M5_LOGI("Recognized:%s", result.c_str());
+    */
+    if (CoreS3.Camera.get()) {
+      CoreS3.Display.pushImage(0, 0, 320, 240, (uint16_t *)CoreS3.Camera.fb->buf);
+      CoreS3.Camera.free();
+    } else {
+      Serial.println("Camera capture failed");
+    }
   }
 }
 
 void callbackBtnC(){
-  if(avatar.isDrawing()) { return; }
-  if (WiFi.status() == WL_CONNECTED) {
-    M5.Display.setTextColor(GREEN);
-    M5.Display.printf("\nIP: %s\n", WiFi.localIP().toString().c_str());
-    M5.Display.setTextColor(WHITE);
-    //requestGemini("こんにちは");
-  }else{
-    setupWifi("/wlan.json");
-    //myServer.connect_wlan_from_sd("/wlan.json");
+  if(avatar.isDrawing()) {
+    motion_id = (motion_id+1) % NUM_MOTIONS;
+    M5_LOGI("Start Motion %d", motion_id);
+    myMotion(&servo, motion_id);
+    M5_LOGI("End Motion %d", motion_id);
+    return;
+  } else {
     if (WiFi.status() == WL_CONNECTED) {
-      beep(1);
-      adjustTime();
+      M5.Display.setTextColor(GREEN);
+      M5.Display.printf("\nIP: %s\n", WiFi.localIP().toString().c_str());
+      M5.Display.setTextColor(WHITE);
+    }else{
+      setupWifi("/wlan.json");
+
+      if (WiFi.status() == WL_CONNECTED) {
+        beep(1);
+        adjustTime();
+      }
     }
   }
-
 }
 
-/**
- * @brief 
- * 
- */
-void setup() {
-  auto cfg = M5.config();
-  M5.begin(cfg);
-  //M5.Log.setLogLevel(m5::log_target_display, ESP_LOG_INFO);
-  M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_INFO);
-  M5.Log.setEnableColor(m5::log_target_serial, true);
-
-  M5.Display.setFont(&fonts::lgfxJapanGothic_12);
-  M5.Display.setTextSize(1);
-  M5.Display.setBrightness(100);
-
-  Serial.begin(115200);
-
-  mountSd();
-  mountLitteFs();
-
-  myServer.setDocumentRoot("/html");
-
+/*** Initialize servo motors */
+void initServoMotors() {
   if(SD.exists("/yaml/SC_BasicConfig.yaml")){
     system_config.loadConfig(SD, "/yaml/SC_BasicConfig.yaml");
   }else{
@@ -299,44 +219,81 @@ void setup() {
               (ServoType)system_config.getServoType());
   delay(2000);
 
+  system_config.getServoInfo(AXIS_X)->start_degree;
+  system_config.getServoInfo(AXIS_Y)->start_degree;
+}
+
+void setupRestAPIs() {
+  /// register REST-API
+  myServer.registerPostApi("hello_api", handleHello);
+  myServer.registerPostApi("face", handleFace);
+  myServer.registerPostApi("tts", handleTexttospeech);
+  myServer.registerPostApi("gemini", handleTalkGemini);
+  myServer.registerPostApi("move", handleMove);
+  myServer.registerPostApi("asr", handleAsr);
+  myServer.registerPostApi("get_file_list", handleGetFileList);
+  myServer.registerPostApi("get_file", handleGetFile);
+  myServer.registerPostApi("save_file", handleSaveFile);
+  myServer.registerPostApi("command", handleCommand);
+  myServer.registerGetApi("camera_image", handleCameraImage);
+  myServer.registerGetApi("stream", handleStreamPath); 
+  //myServer.loadApiConfig("/api.yml");
+}
+
+/**
+ * @brief 
+ * 
+ */
+void setup() {
+  auto cfg = M5.config();
+  M5.begin(cfg);
+  //M5.Log.setLogLevel(m5::log_target_display, ESP_LOG_INFO);
+  M5.Log.setLogLevel(m5::log_target_serial, ESP_LOG_INFO);
+  M5.Log.setEnableColor(m5::log_target_serial, true);
+
+  M5.Display.setFont(&fonts::lgfxJapanGothic_16);
+  M5.Display.setTextSize(1);
+  M5.Display.setBrightness(100);
+
+  if (!M5.Rtc.isEnabled()) {
+    Serial.println("RTC not found.");
+    for (;;) { vTaskDelay(500);}
+  }
+
+  Serial.begin(115200);
+
+  mountSd();
+  mountLitteFs();
+
+  initServoMotors();
+  /*
   servo_interval_s* servo_interval = system_config.getServoInterval(AvatarMode::NORMAL);
   servo_interval_s* servo_interval_sing = system_config.getServoInterval(AvatarMode::SINGING);
-
-    // Camera
+  */
+  // Camera
   CoreS3.Camera.begin();
   CoreS3.Camera.sensor->set_framesize(CoreS3.Camera.sensor, FRAMESIZE_QVGA);
-
-  // Wifi connection
-  //myServer.connect_wlan_from_sd("/wlan.json");
   delay(500);
+
+  // Wifi
   setupWifi("/wlan.json");
-  // WebServer
-  /// register REST-API
-  myServer.registerApi("hello_api", handleHello);
-  myServer.registerApi("face", handleFace);
-  myServer.registerApi("tts", handleTexttospeech);
-  myServer.registerApi("gemini", handleTalkGemini);
-  myServer.registerApi("move", handleMove);
-  myServer.registerApi("asr", handleAsr);
-  myServer.registerApi("get_file_list", handleGetFileList);
-  myServer.registerApi("get_file", handleGetFile);
-  myServer.registerApi("save_file", handleSaveFile);
-  myServer.registerGetApi("camera_image", handleCameraImage);
-  myServer.registerGetApi("stream", handleStreamPath);
-  //myServer.loadApiConfig("/api.yml");
-  myServer.start();
-
-  /// Touch buttons
-  touchButton.createButton(0, 200, 100, 40, callbackBtnA);
-  touchButton.createButton(105, 200, 100, 40, callbackBtnB);
-  touchButton.createButton(210, 200, 100, 40, callbackBtnC);
-
   if (WiFi.status() == WL_CONNECTED) {
     beep(1);
     adjustTime();
   } else {
     beep(2);
   }
+
+  // Start Web service
+  // WebServer
+  myServer.setDocumentRoot("/html");
+  setupRestAPIs();
+  myServer.start();
+
+  /// Touch buttons
+  touchButton.createButton(0, 200, 100, 40, callbackBtnA);
+  touchButton.createButton(105, 200, 100, 40, callbackBtnB);
+  touchButton.createButton(210, 200, 100, 40, callbackBtnC);
 
   /// Mic
   auto mic_cfg = M5.Mic.config();
@@ -347,19 +304,38 @@ void setup() {
   M5.Mic.config(mic_cfg);
 
   // Avatar and interaction_id
-  interactionId=loadFile("/gemini_interaction");
+  interactionId = loadFile("/gemini_interaction");
   avatar.setBatteryIcon(true);
   avatar.init(8);
   avatar.setSpeechFont(&fonts::lgfxJapanGothic_12);
+
+  // Timer event
+  //M5.Rtc.setAlarmIRQ(120+randNum);
 }
 
 void loop() {
   M5.update();
   myServer.update();
   touchButton.update();
-  avatar.setBatteryStatus( M5.Power.isCharging(),
-    M5.Power.getBatteryLevel());
 
+  // Check IRQ event
+  if(M5.Rtc.getIRQstatus()){
+    randNum = random(1, 51);
+    int face = randNum % 6;    
+    avatar.setExpression(expressions[face]);
+
+    int m_id = randNum % 10;
+    if (m_id > 1 && m_id < 6) { myMotion(&servo, m_id); }
+
+    // Set next
+    M5.Rtc.setAlarmIRQ(120+randNum);
+  }
+
+  // Update battery level
+  avatar.setBatteryStatus( M5.Power.isCharging(),
+          M5.Power.getBatteryLevel());
+
+  // Flick actions
   int state = touchButton.getState();
   switch(state){
     case FlickMotion::Right:
@@ -381,4 +357,5 @@ void loop() {
     default:
       break;
   }
+  
 }

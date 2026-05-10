@@ -17,8 +17,8 @@
  */
 void adjustTime(){
   configTime(9 * 3600, 0, "pool.ntp.org");
-  M5.Display.print("NTP Syncing");
-  Serial.print("Waiting for NTP time sync...");
+  //M5.Display.print("NTP Syncing");
+  Serial.println("Waiting for NTP time sync...");
   time_t now = time(nullptr);
   while (now < 8 * 3600 * 2) {
     delay(500);
@@ -26,8 +26,8 @@ void adjustTime(){
     Serial.print(".");
     now = time(nullptr);
   }
-  M5.Display.println("\nTime synced.");
-  Serial.println("\nTime synchronized.");
+  //M5.Display.println("\nTime synced.");
+  Serial.println("Time synchronized.");
 }
 
 /**
@@ -176,6 +176,17 @@ bool listDir(fs::FS &fs, const char* dirname, std::map<String, std::vector<Strin
   return true;
 }
 
+
+int createDir(fs::FS &fs, const char *path) {
+  Serial.printf("Creating Dir: %s\r\n", path);
+  if (fs.mkdir(path)) {
+    Serial.println("Dir created");
+    return 1;
+  } else {
+    Serial.println("mkdir failed");
+    return 0;
+  }
+}
 /**
  * @brief 
  * 
@@ -193,7 +204,7 @@ void saveFile(String fname, const char *contents){
     return;
   }
   if(file.print(contents)) {
-    Serial.printf("Fail saved: %s\n", fname.c_str());
+    Serial.printf("File saved: %s %s\n", fname.c_str(), contents);
   }else{
     Serial.printf("Error: fail to save file: %s\n", fname.c_str());
   }
@@ -243,6 +254,74 @@ void splitString(String src, std::vector<String>& delims, std::vector<String>& s
   return;
 }
 
+int cutString(String src, int len, std::vector<String>& slist) {
+  int n = ceil(src.length()/len);
+  for(int i=0; i<n; i++){
+    String substr = String(src.substring(i*len, (i+1)*len));
+    substr.trim();
+    Serial.printf("--> %s\r\n", substr.c_str());
+    slist.push_back(substr);
+  }
+  return n;
+}
+
+int loadJson(String fname, JsonDocument& doc) {
+  String content = loadFile(fname);
+  if (content.length() > 0){
+    DeserializationError error = deserializeJson(doc, content);
+    if(error){
+      M5_LOGE("Fail to deserialize Json");
+      return -1;
+    }
+    return 0;
+  }
+  return -1;
+}
+
+/**
+ * Beep
+ * 
+ */
+static int Volume=40;
+
+void setVolume(int v) {
+    Volume=v;
+}
+
+void resetVolume() {
+    M5.Speaker.setVolume(Volume);
+}
+
+void beep(int typ){
+    M5.Speaker.begin();
+    M5.Speaker.setVolume(Volume);
+    switch(typ){
+        case 0:
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            M5.Speaker.tone(1000, 200);
+            delay(200);
+            break;
+        case 1:
+            M5.Speaker.tone(1000, 200);
+            delay(200);
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            break;
+        case 2:
+            M5.Speaker.tone(1500, 200);
+            delay(400);
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            break;
+        default:
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            break;
+    }
+    //M5.Speaker.stop();
+    M5.Speaker.end();
+}
 /**
  * @brief Get the Api Key object
  * 
@@ -405,9 +484,9 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
 
 // WiFi接続 
 bool connect_wlan(const char* filepath) {
-  Serial.printf("\nConnect Wifi from: %s\n", filepath);
+  Serial.printf("\r\nConnect Wifi from: %s\r\n", filepath);
     if(!isFileExists(String(filepath))) {
-      Serial.printf("WiFi config not found!: %s\n", filepath);
+      Serial.printf("WiFi config not found!: %s\r\n", filepath);
       return false;
     }
     File file = getFileDescriptor(String(filepath));
@@ -416,7 +495,7 @@ bool connect_wlan(const char* filepath) {
     file.close();
 
     if (error) {
-      Serial.printf("JSON Parse Error: %s\n", error.c_str());
+      Serial.printf("JSON Parse Error: %s\r\n", error.c_str());
       return false;
     }
 
@@ -429,21 +508,23 @@ bool connect_wlan(const char* filepath) {
         const char* ssid = p.value()["essid"];
         const char* pass = p.value()["passwd"];
 
-        Serial.printf("\nConnecting to %s...\n", profileName.c_str());
+        Serial.printf("Connecting to %s... %s\r\n", profileName.c_str(), ssid);
         WiFi.begin(ssid, pass);
         // タイムアウト判定
         int timeout_sec = 5;
         unsigned long startAttemptTime = millis();
         while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout_sec * 1000) {
             delay(500);
+            //Serial.printf("Wait for connection [%s, %s]\r\n",ssid, pass);
         }
 
         if (WiFi.status() == WL_CONNECTED) {
           connected = true;
-          Serial.printf("Success IP: %s",  WiFi.localIP().toString().c_str());
+          Serial.printf("Success IP: %s\r\n",  WiFi.localIP().toString().c_str());
+          M5.Display.printf("IP: %s\r\n",  WiFi.localIP().toString().c_str());
           return true;
         } else {
-          Serial.println("\nTimeout / Failed.");
+          Serial.println("Timeout / Failed.");
           WiFi.disconnect();
           delay(100);
         }
@@ -456,6 +537,7 @@ bool connect_wlan(const char* filepath) {
 }
 
 void setupWifi(String conf_file){
+  M5.Display.println("Setup Wifi");
   if(connect_wlan(conf_file.c_str())) return;
   conf_file = "/sd"+conf_file;
   if(connect_wlan(conf_file.c_str())) return;
@@ -466,6 +548,8 @@ void setupWifi(String conf_file){
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
+  M5.Display.printf("AP %s IP: ", ssid);
+  M5.Display.println(myIP);
   return;
 }
 
@@ -558,6 +642,15 @@ String readHttpHeader(WiFiClientSecure *client, int *code, int *contentLen, bool
   return response;
 }
 
+int checkClientRead(WiFiClientSecure *client, int timeout) {
+  fd_set fdset;
+  struct timeval tv;
+  FD_ZERO(&fdset);
+  FD_SET(client->socket(), &fdset);
+  tv.tv_sec = timeout / 1000;
+  tv.tv_usec = (timeout % 1000) * 1000;
+  return select(client->socket() + 1, &fdset, nullptr, nullptr, timeout<0 ? nullptr : &tv);
+}
 /**
  * @brief 
  * 
@@ -591,9 +684,8 @@ size_t sendRequestBody(WiFiClientSecure *client, unsigned char *buffer, int tota
 uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len) {
   uint8_t* buffer = (uint8_t*)heap_caps_malloc(contentLen, MALLOC_CAP_SPIRAM);
   memset(buffer, 0, contentLen);
-    
+  size_t buffLen = 0;
   if (buffer != nullptr) {
-    size_t buffLen = 0;
     int size = 4096;
     unsigned long timeout_start = millis();
     while (client->connected() && (millis() - timeout_start < 1000)) {

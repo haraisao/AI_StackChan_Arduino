@@ -1,13 +1,12 @@
+/*
+ */
+#pragma once
 #include <Arduino.h>
 #include <M5Unified.h>
+
 #include <map>
 #include <vector>
 #include <functional>
-
-enum FlickMotion {
-    Right = 1,
-    Left, Down, Up
-};
 
 
 class RectArea {
@@ -42,6 +41,11 @@ public:
         }
         return false;
     }
+};
+
+enum FlickMotion {
+    Right = 1,
+    Left, Down, Up
 };
 
 class TouchButton {
