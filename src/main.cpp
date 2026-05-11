@@ -255,6 +255,7 @@ void callbackBtnC(){
     M5.Display.printf("\nIP: %s\n", WiFi.localIP().toString().c_str());
     M5.Display.setTextColor(WHITE);
     //requestGemini("こんにちは");
+    adjustTime();
   }else{
     setupWifi("/wlan.json");
     //myServer.connect_wlan_from_sd("/wlan.json");
