@@ -11,12 +11,14 @@
 #include "Utils.h"
 #include <WiFiAP.h>
 
+#define JST 3600 * 9 
 /**
  * @brief 
  * 
  */
 void adjustTime(){
-  configTime(9 * 3600, 0, "pool.ntp.org");
+  //configTime(9 * 3600, 0, "pool.ntp.org");
+  configTime(JST, 0, "ntp.nict.jp", "ntp.jst.mfeed.ad.jp");
   //M5.Display.print("NTP Syncing");
   Serial.println("Waiting for NTP time sync...");
   time_t now = time(nullptr);
@@ -27,8 +29,45 @@ void adjustTime(){
     now = time(nullptr);
   }
   //M5.Display.println("\nTime synced.");
+  m5::rtc_datetime_t currentTime;
+  struct tm timeinfo;
+  getLocalTime(&timeinfo);
+
+  currentTime.date.year=timeinfo.tm_year+1900;
+  currentTime.date.month=timeinfo.tm_mon+1;
+  currentTime.date.date=timeinfo.tm_mday;
+  currentTime.time.hours=timeinfo.tm_hour;
+  currentTime.time.minutes=timeinfo.tm_min;
+  currentTime.time.seconds=timeinfo.tm_sec;
+  M5.Rtc.setDateTime(&currentTime);
   Serial.println("Time synchronized.");
 }
+
+String getCurrentTime(int style) {
+  struct tm timeinfo;
+  const char* week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}; 
+  if (!getLocalTime(&timeinfo)) {
+    return "";
+  }
+
+  char date_buff[11];
+  sprintf(date_buff, "%04d/%02d/%02d", \
+    timeinfo.tm_year+1900, timeinfo.tm_mon+1, timeinfo.tm_mday, week[timeinfo.tm_wday]);
+  char time_buff[6];
+  sprintf(time_buff,"%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
+  if(style==0){
+    return String(date_buff) +" "+ String(time_buff);
+  }else if(style==1){
+    return String(date_buff);
+  }else if(style==2){
+    return String(time_buff);
+  }else{
+    char time_buff2[9];
+    sprintf(time_buff2,"%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+    return String(time_buff2);
+  }
+}
+
 
 /**
  * @brief 

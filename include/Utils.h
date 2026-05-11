@@ -24,6 +24,7 @@
 
 
 void adjustTime();
+String getCurrentTime(int style);
 bool mountLitteFs();
 bool mountSd(int trial=3);
 String readRootCA(String fname);

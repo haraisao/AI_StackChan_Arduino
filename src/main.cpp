@@ -372,5 +372,12 @@ void loop() {
     default:
       break;
   }
+
+  /// Watch
+  int8_t watchFlag=avatar.getInfoFlushing();
+  if((avatar.getInfoText() == "" && watchFlag == 1) || watchFlag == 0){
+    String tm=getCurrentTime(2);
+    avatar.setInfoText(tm.c_str(),TFT_WHITE, TFT_BLACK, (int8_t)0);
+  }
   
 }
