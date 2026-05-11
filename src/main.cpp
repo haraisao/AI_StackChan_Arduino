@@ -70,7 +70,11 @@ void handleMove() {
   int x = doc["x"];
   int y = doc["y"];
   int sp = doc["sp"];
+#if RT_VERSION
+  servo.moveXY(x+180, 90+y, sp);
+#else
   servo.moveXY(x+90, 90-y, sp);
+#endif
   myServer.response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
@@ -370,14 +374,18 @@ void loop() {
       servo.moveDeltaXY(-10, 0, 500);
       touchButton.resetState();
       break;
-    case FlickMotion::Down:
-      touchButton.resetState();
+#if RT_VERSION
+      servo.moveDeltaXY(0, -5, 500);
+#else
       servo.moveDeltaXY(0, 5, 500);
+#endif
       break;
     case FlickMotion::Up:
+#if RT_VERSION
+      servo.moveDeltaXY(0, 5, 500);
+#else
       servo.moveDeltaXY(0, -5, 500);
-      touchButton.resetState();
-      break;
+#endif
     default:
       break;
   }
