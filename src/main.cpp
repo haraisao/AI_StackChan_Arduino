@@ -59,7 +59,14 @@ void handleMove(void *arg) {
   int x = doc["x"];
   int y = doc["y"];
   int sp = doc["sp"];
+
+#ifdef RT_VERSION
+  /// for RT vesion.
+  servo.moveXY(x+180, 90+y, sp);
+#else
+  //// for SG90
   servo.moveXY(x+90, 90-y, sp);
+#endif
   srv->response(200, "application/json", "{\"result\":\"OK\"}");
 }
 
@@ -348,10 +355,18 @@ void loop() {
       break;
     case FlickMotion::Down:
       touchButton.resetState();
+#if RT_VERSION
+      servo.moveDeltaXY(0, -5, 500);
+#else
       servo.moveDeltaXY(0, 5, 500);
+#endif
       break;
     case FlickMotion::Up:
+#if RT_VERSION
+      servo.moveDeltaXY(0, 5, 500);
+#else
       servo.moveDeltaXY(0, -5, 500);
+#endif
       touchButton.resetState();
       break;
     default:
