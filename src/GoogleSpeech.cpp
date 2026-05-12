@@ -69,7 +69,7 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar) {
             if (stream->read() == '"') break;
           }
           // 3. PSRAMに、Base64を受け取るための巨大バッファ
-          size_t max_b64_size = 500000;
+          size_t max_b64_size = 1000000;
           char* b64_buffer = (char*)heap_caps_malloc(max_b64_size, MALLOC_CAP_SPIRAM);
 
           if (b64_buffer != nullptr) {
