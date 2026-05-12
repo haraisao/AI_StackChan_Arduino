@@ -73,7 +73,7 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar, StackchanSERVO *serv
             if (stream->read() == '"') break;
           }
           // 3. PSRAMに、Base64を受け取るための巨大バッファ
-          size_t max_b64_size = 500000;
+          size_t max_b64_size = 1000000;
           char* b64_buffer = (char*)heap_caps_malloc(max_b64_size, MALLOC_CAP_SPIRAM);
 
           if (b64_buffer != nullptr) {
@@ -159,7 +159,9 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar, StackchanSERVO *serv
       free(reqBody_buff);
     }
     M5.Speaker.stop();
+    delay(50);
     resetVolume();
+    delay(50);
     M5.Speaker.end();
     delete client;
   }
@@ -215,16 +217,16 @@ void speakGoogleTTS2(String text,  m5avatar::Avatar *avatar, StackchanSERVO *ser
       size_t bytes_sent= sendRequestBody(client, (unsigned char*)reqBody_buff, reqBody_size); 
       M5_LOGI("Waiting for response...(%d, %d)", bytes_sent, reqBody_size);
       //free(reqBody_buff);
-      servo->moveDeltaXY(0, -10, 100);
+      if(servo) servo->moveDeltaXY(0, -10, 100);
       int res = 0;
       int count = 0;
       while(res == 0) {
         res = client->available();
         delay(200);
       }
-      servo->moveDeltaXY(0, 10, 100);
+      if(servo) servo->moveDeltaXY(0, 10, 100);
 
-      int contentLen = 300000;
+      int contentLen = 1000000;
       bool chunk_flag = false;
       int httpResponseCode = 0;
       String resheader = readHttpHeader(client, &httpResponseCode, &contentLen, &chunk_flag);
@@ -233,72 +235,75 @@ void speakGoogleTTS2(String text,  m5avatar::Avatar *avatar, StackchanSERVO *ser
       if (httpResponseCode == 200) {
         int buffLen = 0;
         uint8_t* buff = readResponseBody(client, contentLen, &buffLen);
+        if(buff != nullptr) {
+          String buff_str = String((char *)buff);
+          int st = buff_str.indexOf("\"audioContent\"");
+          if(st > 0) {
+            st = buff_str.indexOf("\"",st+15);
+            int ed = buff_str.indexOf("\"", st+1);
+            int b64_len=ed-st-1;
+            uint8_t* buffer = buff+st+1;
+            // Decode audio data
+            size_t audio_len = 0;
+            mbedtls_base64_decode(nullptr, 0, &audio_len, (const unsigned char*)buffer, b64_len);
+            //M5_LOGI("Audio: %d, %d", audio_len, b64_len);
+            uint8_t* audio_buf = (uint8_t*)heap_caps_malloc(audio_len, MALLOC_CAP_SPIRAM);
 
-        String buff_str = String((char *)buff);
-        int st = buff_str.indexOf("\"audioContent\"");
-        if(st > 0) {
-          st = buff_str.indexOf("\"",st+15);
-          int ed = buff_str.indexOf("\"", st+1);
-          int b64_len=ed-st-1;
-          uint8_t* buffer = buff+st+1;
-          // Decode audio data
-          size_t audio_len = 0;
-          mbedtls_base64_decode(nullptr, 0, &audio_len, (const unsigned char*)buffer, b64_len);
-          //M5_LOGI("Audio: %d, %d", audio_len, b64_len);
-          uint8_t* audio_buf = (uint8_t*)heap_caps_malloc(audio_len, MALLOC_CAP_SPIRAM);
+            if (audio_buf != nullptr) {
+              mbedtls_base64_decode(audio_buf, audio_len, &audio_len, (const unsigned char*)buffer, b64_len);
 
-          if (audio_buf != nullptr) {
-            mbedtls_base64_decode(audio_buf, audio_len, &audio_len, (const unsigned char*)buffer, b64_len);
-
-            unsigned long start_time = millis();
-            int16_t* pcm_data = (int16_t*)audio_buf+44;  // shift wav header
-            size_t total_samples = audio_len-44;
-            const float MAX_RMS = 9000.0;
-            if (avatar){
-              avatar->setSpeechText(text.c_str());
-            }
-            //float dsample = total_samples/num;
-            M5.Speaker.playWav(audio_buf, audio_len);
-            /// Spiking action...
-            while (M5.Speaker.isPlaying()) {
-              M5.update();
-              //--------- Taking...
-              unsigned long elapsed_ms = millis() - start_time;
-              size_t current_sample = (elapsed_ms * 8000) / 1000;
-              if (current_sample + 160 < total_samples) {
-                int64_t sum_sq = 0;
-                for (int i = 0; i < 160; i++) {
-                  int16_t sample = pcm_data[current_sample + i];
-                  sum_sq += sample * sample;
-                }
-                float ratio = sqrt(sum_sq / 160.0) / MAX_RMS;
-
-                if(avatar) avatar->setMouthOpenRatio(ratio);
+              unsigned long start_time = millis();
+              int16_t* pcm_data = (int16_t*)audio_buf+44;  // shift wav header
+              size_t total_samples = audio_len-44;
+              const float MAX_RMS = 9000.0;
+              if (avatar){
+                avatar->setSpeechText(text.c_str());
               }
-              delay(20);
-            }
-            if(avatar) {
-              avatar->setMouthOpenRatio(0.0);
-              avatar->setSpeechText("");
-            }
-            free(audio_buf);
+              //float dsample = total_samples/num;
+              M5.Speaker.playWav(audio_buf, audio_len);
+              /// Spiking action...
+              while (M5.Speaker.isPlaying()) {
+                M5.update();
+                //--------- Taking...
+                unsigned long elapsed_ms = millis() - start_time;
+                size_t current_sample = (elapsed_ms * 8000) / 1000;
+                if (current_sample + 160 < total_samples) {
+                  int64_t sum_sq = 0;
+                  for (int i = 0; i < 160; i++) {
+                    int16_t sample = pcm_data[current_sample + i];
+                    sum_sq += sample * sample;
+                  }
+                  float ratio = sqrt(sum_sq / 160.0) / MAX_RMS;
 
-          }else{
-            M5_LOGE("Memory allocation paser Error.");
+                  if(avatar) avatar->setMouthOpenRatio(ratio);
+                }
+                delay(20);
+              }
+              if(avatar) {
+                avatar->setMouthOpenRatio(0.0);
+                avatar->setSpeechText("");
+              }
+              free(audio_buf);
+            }else{
+              M5_LOGE("Memory allocation paser Error.");
+            }
+            free(buff);
+          } else {
+            M5_LOGE("No 'audioContent' found...");
+            free(buff);
           }
-
-        } else {
-          M5_LOGE("No 'audioContent' found...");
-          free(buff);
+        } else{
+          M5_LOGE("HTTP Error: fail to allocate memory");
         }
-
       } else {
         M5_LOGE("HTTP Error: %d\n", httpResponseCode);
       }
 
     }
     M5.Speaker.stop();
+    delay(50);
     resetVolume();
+    delay(50);
     M5.Speaker.end();
     delete client;
   }

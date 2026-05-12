@@ -722,9 +722,10 @@ size_t sendRequestBody(WiFiClientSecure *client, unsigned char *buffer, int tota
  */
 uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len) {
   uint8_t* buffer = (uint8_t*)heap_caps_malloc(contentLen, MALLOC_CAP_SPIRAM);
-  memset(buffer, 0, contentLen);
+
   size_t buffLen = 0;
   if (buffer != nullptr) {
+    memset(buffer, 0, contentLen);
     int size = 4096;
     unsigned long timeout_start = millis();
     while (client->connected() && (millis() - timeout_start < 1000)) {
