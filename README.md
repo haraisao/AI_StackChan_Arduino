@@ -65,9 +65,9 @@ PS C:\Work\AI_Stackchan_Arduino> code .
 ### 設定ファイルの修正
 このソフトウェアの設定ファイルは、 data/yaml/SC_BasicConfig.yaml と wlan.json、apikey.txt です。
 
-- SC_BasicConfig.yamlは、RT版ｽﾀｯｸﾁｬﾝの設定にしていますが、ご自身のｽﾀｯｸﾁｬﾝの設定に合わせて修正してください。
-- wlan.jsonは、無線LANアクセスポイントの設定です。これは、UiFlow2版のｽﾀｯｸﾁｬﾝと同じにしています。このファイルには、Home, Work, Mobileの3つのアクセスポイントの設定を入力することができます。
-- apikey.txtは、音声認識、音声合成、対話生成に必要なAPIキーです。現在のところ、音声認識と音声合成は GoogleSpeechAPI（GOOGLE_SPEECH_KEY）、対話生成は Gemini（GEMINI_KEY）のみに対応しています。それぞのAPIキーを作成して、このファイルに転記してください。
+- **SC_BasicConfig.yaml**は、RT版ｽﾀｯｸﾁｬﾝの設定にしていますが、ご自身のｽﾀｯｸﾁｬﾝの設定に合わせて修正してください。
+- **wlan.json**は、無線LANアクセスポイントの設定です。これは、UiFlow2版のｽﾀｯｸﾁｬﾝと同じにしています。このファイルには、Home, Work, Mobileの3つのアクセスポイントの設定を入力することができます。
+- **apikey.txt**は、音声認識、音声合成、対話生成に必要なAPIキーです。現在のところ、音声認識と音声合成は GoogleSpeechAPI（GOOGLE_SPEECH_KEY）、対話生成は Gemini（GEMINI_KEY）のみに対応しています。それぞのAPIキーを作成して、このファイルに転記してください。
 
 ### ファイルのアップロード
 このソフトウェアでは、設定ファイルやHTMLファイル等をLittleFSまたはSDカード上にあることを想定しています。SDカードを使用する場合には、dataフォルダ以下のファイルをすべてコピーしてください。
