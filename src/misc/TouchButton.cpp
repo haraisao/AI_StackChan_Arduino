@@ -1,6 +1,6 @@
 /**
  * @file TouchButton.cpp
- * @author your name (you@domain.com)
+ * @author Isao Hara (isao@hara-jp.com)
  * @brief 
  * @version 0.1
  * @date 2026-05-02
@@ -10,6 +10,31 @@
  */
 #include "TouchButton.h"
 
+
+bool RectArea::update(int x, int y) {
+  if (hasCallback() && isInside(x, y) ){
+    _callback();
+    return true;
+  }
+  return false;
+}
+
+void RectArea::setLabel(String lbl){
+  this->label = lbl;
+  //M5_LOGI("Label: %s", this->label.c_str());
+}
+
+void RectArea::show(){
+  M5.Display.drawRect(x0, y0, width, height, TFT_WHITE);
+  //M5_LOGI("Label: %d, %d: %s", x0, y0, this->label.c_str());
+  if(label){
+    M5.Display.setTextSize(1);
+    //M5.Display.setTextColor(TFT_WHITE, TFT_BLACK);
+    M5.Display.setTextDatum(MC_DATUM);
+    M5.Display.setCursor(x0+width/2 -20,y0+height/2);
+    M5.Display.print(label);
+  }
+}
 /**
  * @brief 
  * 
@@ -19,12 +44,18 @@
  * @param h 
  * @param func 
  */
-void TouchButton::createButton(int x, int y, int w, int h, std::function<void()> func){
-  auto btn = RectArea(x, y, w, h);
+void TouchButton::createButton(int x, int y, int w, int h, std::function<void()> func, String label){
+  auto btn = RectArea(x, y, w, h, label);
   btn.registerCallback(func);
   buttons.push_back(btn);
+
 }
 
+void TouchButton::show() {
+  for (int i=0; i<buttons.size(); i++){
+    buttons[i].show();
+  }
+}
 /**
  * @brief 
  * 
@@ -82,6 +113,7 @@ void TouchButton::update() {
     }
   }
 }
+
 
 /**
  * @brief 

@@ -1,3 +1,13 @@
+/**
+ * @file M5WebServer.cpp
+ * @author Isao Hara (isao@hara-jp.com)
+ * @brief 
+ * @version 0.1
+ * @date 2026-05-16
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
 #include <M5Unified.h>
 #include "M5WebServer.h"
 #include "Utils.h"
@@ -11,6 +21,16 @@ String M5WebServer::getContentType(String filename) {
     if (filename.endsWith(".ico")) return "image/x-icon";
     if (filename.endsWith(".json")) return "application/json";
     return "text/plain";
+}
+
+void M5WebServer::registerPostApi(String name, std::function<void(void*)> func) {
+    _registeredHandlers[name] = std::bind(func, this);
+    server.on("/"+name, HTTPMethod::HTTP_POST, _registeredHandlers[name]);
+}
+
+void M5WebServer::registerGetApi(String name, std::function<void(void*)> func) {
+    _registeredHandlers[name] = std::bind(func, this);
+    server.on("/"+name, _registeredHandlers[name]);
 }
 
 // --- 【重要】BluePrintのようにファイルを自動検索して応答するハンドラ ---
@@ -142,6 +162,20 @@ String M5WebServer::getBody() {
 
 void M5WebServer::response(int code, const char* content_type, const char* content) {
     server.send(code, content_type, content);
+}
+
+void M5WebServer::response(int code, const char* content_type, JsonDocument doc) {
+    String response;
+    size_t res = serializeJson(doc, response);
+    const char *content = response.c_str();
+    server.send(code, content_type, content);
+}
+
+DeserializationError M5WebServer::requestJson(JsonDocument& doc){
+  String postBody = getBody();
+  //JsonDocument doc;
+  Serial.println(postBody);
+  return deserializeJson(doc, postBody);
 }
 
 #if 0

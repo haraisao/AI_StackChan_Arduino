@@ -1,9 +1,9 @@
 /**
- * @file Handlers.cpp
- * @author your name (you@domain.com)
+ * @file Utils.cpp
+ * @author Isao Hara (isao@hara-jp.com)
  * @brief 
  * @version 0.1
- * @date 2026-04-30
+ * @date 2026-05-16
  * 
  * @copyright Copyright (c) 2026
  * 
@@ -11,15 +11,40 @@
 #include "Utils.h"
 #include <WiFiAP.h>
 
+#define JST 3600 * 9 
+
+
+m5avatar::Expression getExpression(String val){
+  std::map<String, m5avatar::Expression> faceType2 = {
+    {"Neutral", m5avatar::Expression::Neutral},
+    {"Sleepy", m5avatar::Expression::Sleepy},
+    {"Happy", m5avatar::Expression::Happy},
+    {"Sad", m5avatar::Expression::Sad},
+    {"Duobt", m5avatar::Expression::Doubt},
+    {"Angry", m5avatar::Expression::Angry}};
+  if(faceType2.count(val)){
+    return faceType2[val];
+  }else{
+    return m5avatar::Expression::Neutral;
+  }
+}
+
+m5avatar::Expression getExpressionIndex(int val){
+  String expressions[] = {"Neutral", "Sleepy", "Happy", "Sad", "Doubt", "Angry"};
+  if(sizeof(expressions) > val){
+    return getExpression(expressions[val]);
+  }else{
+    return m5avatar::Expression::Neutral;
+  }
+}
 /**
  * @brief 
  * 
  */
 void adjustTime(){
-  //configTime(9 * 3600, 0, "pool.ntp.org");
-  configTime(9 * 3600, 0, "ntp.nict.jp", "ntp.jst.mfeed.ad.jp");
-  M5.Display.print("NTP Syncing");
-  Serial.print("Waiting for NTP time sync...");
+ configTime(JST, 0, "ntp.nict.jp", "ntp.jst.mfeed.ad.jp");
+  //M5.Display.print("NTP Syncing");
+  Serial.println("Waiting for NTP time sync...");
   time_t now = time(nullptr);
   while (now < 8 * 3600 * 2) {
     delay(500);
@@ -27,7 +52,7 @@ void adjustTime(){
     Serial.print(".");
     now = time(nullptr);
   }
-  
+  //M5.Display.println("\nTime synced.");
   m5::rtc_datetime_t currentTime;
   struct tm timeinfo;
   getLocalTime(&timeinfo);
@@ -39,35 +64,9 @@ void adjustTime(){
   currentTime.time.minutes=timeinfo.tm_min;
   currentTime.time.seconds=timeinfo.tm_sec;
   M5.Rtc.setDateTime(&currentTime);
-
-  M5.Display.println("\nTime synced.");
-  Serial.println("\nTime synchronized.");
+  Serial.println("Time synchronized.");
 }
 
-String getCurrentTime(int style) {
-  struct tm timeinfo;
-  const char* week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}; 
-  if (!getLocalTime(&timeinfo)) {
-    return "";
-  }
-
-  char date_buff[11];
-  sprintf(date_buff, "%04d/%02d/%02d", \
-    timeinfo.tm_year+1900, timeinfo.tm_mon+1, timeinfo.tm_mday, week[timeinfo.tm_wday]);
-  char time_buff[6];
-  sprintf(time_buff,"%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
-  if(style==0){
-    return String(date_buff) +" "+ String(time_buff);
-  }else if(style==1){
-    return String(date_buff);
-  }else if(style==2){
-    return String(time_buff);
-  }else{
-    char time_buff2[9];
-    sprintf(time_buff2,"%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
-    return String(time_buff2);
-  }
-}
 /**
  * @brief 
  * 
@@ -102,6 +101,36 @@ String readRootCA(String fname){
   //M5.Display.println("Cert loaded.");
   Serial.println("Certificate loaded from LittleFS.");
   return rootCACertificate;
+}
+
+
+String getCurrentTime(int style) {
+  struct tm timeinfo;
+  const char* week[7] = {"Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"}; 
+  if (!getLocalTime(&timeinfo)) {
+    return "";
+  }
+
+  char date_buff[11];
+  sprintf(date_buff, "%04d/%02d/%02d", \
+    timeinfo.tm_year+1900, timeinfo.tm_mon+1, timeinfo.tm_mday, week[timeinfo.tm_wday]);
+  char time_buff[6];
+  sprintf(time_buff,"%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min);
+
+  switch(style){
+    case DATE_TIME:
+      return String(date_buff) +" "+ String(time_buff);
+    case DATE_ONLY:
+      return String(date_buff);
+    case TIME_ONLY:
+      return String(time_buff);
+    case WEEK_DAY:
+      return String(week[timeinfo.tm_wday]);
+    default:
+      char time_buff2[9];
+      sprintf(time_buff2,"%02d:%02d:%02d", timeinfo.tm_hour, timeinfo.tm_min, timeinfo.tm_sec);
+      return String(time_buff2);
+  }
 }
 
 bool mountSd(int trial) {
@@ -214,6 +243,37 @@ bool listDir(fs::FS &fs, const char* dirname, std::map<String, std::vector<Strin
   return true;
 }
 
+
+bool listFile(String dirname, std::vector<String> &flist) {
+  File root = LittleFS.open(dirname.c_str());
+  if(!root){
+    Serial.println("Error: fail to open directory.\r");
+    return false;
+  }
+  if(!root.isDirectory()){
+    Serial.printf("%s is not a directory.\r\n", dirname.c_str());
+    return false;
+  }
+  File file = root.openNextFile();
+  while(file){
+    if(!file.isDirectory()){
+      flist.push_back(file.name());
+    }
+    file = root.openNextFile();
+  }
+  return true;
+}
+
+int createDir(fs::FS &fs, const char *path) {
+  Serial.printf("Creating Dir: %s\r\n", path);
+  if (fs.mkdir(path)) {
+    Serial.println("Dir created");
+    return 1;
+  } else {
+    Serial.println("mkdir failed");
+    return 0;
+  }
+}
 /**
  * @brief 
  * 
@@ -231,12 +291,31 @@ void saveFile(String fname, const char *contents){
     return;
   }
   if(file.print(contents)) {
-    Serial.printf("Fail saved: %s\n", fname.c_str());
+    Serial.printf("File saved: %s %s\n", fname.c_str(), contents);
   }else{
     Serial.printf("Error: fail to save file: %s\n", fname.c_str());
   }
   file.close();
 }
+
+void saveWavFile(String fname, uint8_t *audio, size_t audio_size){
+  LittleFS.remove(fname.c_str());
+  File file = LittleFS.open(fname.c_str(), "w");
+  //File file = SD.open(fname.c_str(), "w");
+  if(!file) {
+    Serial.printf("Error: fail to open file: %s\n", fname.c_str());
+    return;
+  }
+  size_t size = file.write(audio, audio_size);
+  if(size == audio_size){
+    M5_LOGI("Wav file %s saved (%d, %d)", fname.c_str(), size, audio_size);
+  }else{
+    M5_LOGE("Fail to save Wav file: %s (%d, %d)", fname.c_str(), size, audio_size);
+  }
+  file.close();
+  showRAM();
+}
+
 /**
  * @brief 
  * 
@@ -248,7 +327,7 @@ void removeFile(String path){
     return;
   }
   if(LittleFS.remove(path)){
-    Serial.printf("File deletec: %s\n", path.c_str());
+    Serial.printf("File deleted: %s\n", path.c_str());
   }else{
     Serial.printf("Error: fail to delete file: %s\n", path.c_str());
   }
@@ -281,6 +360,88 @@ void splitString(String src, std::vector<String>& delims, std::vector<String>& s
   return;
 }
 
+int cutString(String src, int len, std::vector<String>& slist) {
+  int n = ceil(src.length()/len);
+  for(int i=0; i<n; i++){
+    String substr = String(src.substring(i*len, (i+1)*len));
+    substr.trim();
+    Serial.printf("--> %s\r\n", substr.c_str());
+    slist.push_back(substr);
+  }
+  return n;
+}
+
+int loadJson(String fname, JsonDocument& doc) {
+  String content = loadFile(fname);
+  if (content.length() > 0){
+    DeserializationError error = deserializeJson(doc, content);
+    if(error){
+      M5_LOGE("Fail to deserialize Json");
+      return -1;
+    }
+    return 0;
+  }
+  return -1;
+}
+
+/**
+ * Beep
+ * 
+ */
+static int Volume=40;
+
+void setVolume(int v) {
+    Volume=v;
+}
+
+void resetVolume() {
+    M5.Speaker.setVolume(Volume);
+}
+
+void beginSpeaker(int v) {
+  M5.Speaker.begin();
+  delay(100);
+  M5.Speaker.setVolume(200);
+}
+
+void endSpeaker(){
+  M5.Speaker.stop();
+  delay(50);
+  M5.Speaker.setVolume(Volume);
+  delay(50);
+  M5.Speaker.end();
+}
+
+void beep(int typ){
+    M5.Speaker.begin();
+    M5.Speaker.setVolume(Volume);
+    switch(typ){
+        case 0:
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            M5.Speaker.tone(1000, 200);
+            delay(200);
+            break;
+        case 1:
+            M5.Speaker.tone(1000, 200);
+            delay(200);
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            break;
+        case 2:
+            M5.Speaker.tone(1500, 200);
+            delay(400);
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            break;
+        default:
+            M5.Speaker.tone(1500, 200);
+            delay(200);
+            break;
+    }
+    //M5.Speaker.stop();
+    M5.Speaker.end();
+}
 /**
  * @brief Get the Api Key object
  * 
@@ -382,7 +543,6 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
 
     int last_state = 0;
     int state = 0;
-    //M5.Display.print("Start...");
 
     int idx = 0;
     int max_frame = max_sec * SAMPLE_RATE/FRAME_SIZE;
@@ -415,14 +575,8 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
         if (last_state != 0) {
             M5.Display.setCursor(0, 0);
             if (state > 0) {
-                //M5.Display.fillScreen(TFT_GREEN);
-                //M5.Display.setTextColor(TFT_BLACK);
-                //M5.Display.println("SPEECH DETECTED");
                 M5_LOGI("SPEECH DETECTED");
             } else {
-                //M5.Display.fillScreen(TFT_BLACK);
-                //M5.Display.setTextColor(TFT_WHITE);
-                //M5.Display.println("Silence...");
                 M5_LOGI("Silence...");
                 break;
             }
@@ -443,9 +597,9 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
 
 // WiFi接続 
 bool connect_wlan(const char* filepath) {
-  Serial.printf("\nConnect Wifi from: %s\n", filepath);
+  Serial.printf("\r\nConnect Wifi from: %s\r\n", filepath);
     if(!isFileExists(String(filepath))) {
-      Serial.printf("WiFi config not found!: %s\n", filepath);
+      Serial.printf("WiFi config not found!: %s\r\n", filepath);
       return false;
     }
     File file = getFileDescriptor(String(filepath));
@@ -454,7 +608,7 @@ bool connect_wlan(const char* filepath) {
     file.close();
 
     if (error) {
-      Serial.printf("JSON Parse Error: %s\n", error.c_str());
+      Serial.printf("JSON Parse Error: %s\r\n", error.c_str());
       return false;
     }
 
@@ -467,21 +621,23 @@ bool connect_wlan(const char* filepath) {
         const char* ssid = p.value()["essid"];
         const char* pass = p.value()["passwd"];
 
-        Serial.printf("\nConnecting to %s...\n", profileName.c_str());
+        Serial.printf("Connecting to %s... %s\r\n", profileName.c_str(), ssid);
         WiFi.begin(ssid, pass);
         // タイムアウト判定
         int timeout_sec = 5;
         unsigned long startAttemptTime = millis();
         while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < timeout_sec * 1000) {
             delay(500);
+            //Serial.printf("Wait for connection [%s, %s]\r\n",ssid, pass);
         }
 
         if (WiFi.status() == WL_CONNECTED) {
           connected = true;
-          Serial.printf("Success IP: %s",  WiFi.localIP().toString().c_str());
+          Serial.printf("Success IP: %s\r\n",  WiFi.localIP().toString().c_str());
+          M5.Display.printf("IP: %s\r\n",  WiFi.localIP().toString().c_str());
           return true;
         } else {
-          Serial.println("\nTimeout / Failed.");
+          Serial.println("Timeout / Failed.");
           WiFi.disconnect();
           delay(100);
         }
@@ -494,6 +650,7 @@ bool connect_wlan(const char* filepath) {
 }
 
 void setupWifi(String conf_file){
+  M5.Display.println("Setup Wifi");
   if(connect_wlan(conf_file.c_str())) return;
   conf_file = "/sd"+conf_file;
   if(connect_wlan(conf_file.c_str())) return;
@@ -504,6 +661,8 @@ void setupWifi(String conf_file){
   IPAddress myIP = WiFi.softAPIP();
   Serial.print("AP IP address: ");
   Serial.println(myIP);
+  M5.Display.printf("AP %s IP: ", ssid);
+  M5.Display.println(myIP);
   return;
 }
 
@@ -541,6 +700,14 @@ void talkWav(m5avatar::Avatar *avatar, uint8_t *wav_data,
 }
 
 
+void showWatch(m5avatar::Avatar *avatar){
+  int8_t watchFlag=avatar->getInfoFlushing();
+  if((avatar->getInfoText() == "" && watchFlag == 1) || watchFlag == 0){
+    String tm = getCurrentTime(TIME_ONLY);
+    avatar->setInfoText(tm.c_str(),TFT_WHITE, TFT_BLACK, (int8_t)0);
+  }
+}
+
 
 /**
  * @brief 
@@ -566,147 +733,134 @@ uint8_t *serializeJsonSpiram(JsonDocument doc,  size_t *size){
 /**
  * @brief 
  * 
- * @param client 
- * @param code 
- * @param contentLen 
- * @param chunk_flag 
- * @return String 
- */
-String readHttpHeader(WiFiClientSecure *client, int *code, int *contentLen, bool *chunk_flag){
-  String response = "";
-  while (client->connected()) {
-    String line = client->readStringUntil('\n');
-    response += line + "\n";
-    if (line.startsWith("HTTP/")){
-      int n = line.indexOf(" ")+1;
-      String res_code = line.substring(n, n+3);
-      //M5_LOGI("===>%s", res_code.c_str());
-      *code = res_code.toInt();
-    }
-    if (line.startsWith("Content-Length:")){
-      *contentLen = line.substring(16).toInt();
-    }
-    if (line.startsWith("Transfer-Encoding: chunked")){
-      *chunk_flag = true;
-    }
-    if (line == "\r") {
-      break;
-    }
-  }
-  return response;
-}
-
-/**
- * @brief 
- * 
- * @param client 
- * @param buffer 
- * @param total_length 
- * @return size_t 
- */
-size_t sendRequestBody(WiFiClientSecure *client, unsigned char *buffer, int total_length) { 
-  size_t bytes_sent = 0;
-  size_t chunk_size = 4096; 
-  
-  while (bytes_sent < total_length) {
-    size_t to_send = total_length - bytes_sent;
-    if (to_send > chunk_size) to_send = chunk_size;
-    client->write(buffer + bytes_sent, to_send);
-    bytes_sent += to_send;
-    delay(2); 
-  }
-  return bytes_sent;
-}
-
-/**
- * @brief 
- * 
- * @param client 
- * @param contentLen 
- * @param len 
- * @return uint8_t* 
- */
-uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len) {
-  uint8_t* buffer = (uint8_t*)heap_caps_malloc(contentLen, MALLOC_CAP_SPIRAM);
-  memset(buffer, 0, contentLen);
-    
-  if (buffer != nullptr) {
-    size_t buffLen = 0;
-    int size = 4096;
-    unsigned long timeout_start = millis();
-    while (client->connected() && (millis() - timeout_start < 1000)) {
-      if((size=client->available())){
-        size_t count = client->readBytes(buffer + buffLen, size);
-        if (count > 0){
-          buffLen += count;
-        }
-        timeout_start = millis();
-      } else if (!client->connected()) {
-        break; 
-      } else {
-        delay(1);
-      }
-    }
-    *len = buffLen;
-  }
-  return buffer;
-}
-
-/**
- * @brief 
- * 
  */
 void showRAM() {
-  M5_LOGI("PSRAM Total: %d bytes\n", ESP.getPsramSize());
-  M5_LOGI("PSRAM Free : %d bytes\n", ESP.getFreePsram());
+  M5_LOGI("PSRAM Total: %d bytes", ESP.getPsramSize());
+  M5_LOGI("PSRAM Free : %d bytes", ESP.getFreePsram());
+  M5_LOGI("合計容量: %u bytes", LittleFS.totalBytes());
+  M5_LOGI("使用容量: %u bytes", LittleFS.usedBytes());
+  size_t freeBytes = LittleFS.totalBytes() - LittleFS.usedBytes();
+  M5_LOGI("空き容量: %u bytes", freeBytes);
 }
 
-
-/**
- * @brief 
- * 
- * @param url 
- * @param postData 
- * @param apikey 
- */
-void sendHttpPostRequest(String url, String postData, String apikey) {
-  WiFiClientSecure *client = new WiFiClientSecure;
-
-  if (client) {
-    client->setInsecure();
-    client->setTimeout(20);
-
-    HTTPClient https;
-    
-    if (https.begin(*client, url)) {
-      //M5.Display.println("Sending POST...");
-      Serial.println("Starting HTTPS POST...");
-
-      https.addHeader("Content-Type", "application/json");
-      https.addHeader("Authorization", "Bearer "+apikey);
-
-      int httpResponseCode = https.POST(postData);
-
-      if (httpResponseCode > 0) {
-        //M5.Display.printf("HTTP Code: %d\n", httpResponseCode);
-        Serial.printf("HTTP Response code: %d\n", httpResponseCode);
-        String payload = https.getString();
-        Serial.println("Response Payload: ");
-        Serial.println(payload);
-        //M5.Display.println("Check Serial for payload");
-      } else {
-        //M5.Display.printf("Error: %d\n", httpResponseCode);
-        Serial.printf("Error code: %d\n", httpResponseCode);
-        Serial.println(https.errorToString(httpResponseCode).c_str());
+void lipSyncAction(int16_t* pcm_data, size_t total_samples, m5avatar::Avatar *avatar)
+ {
+  const float MAX_RMS = 9000.0;
+  int frame_size = 160; // 8000/1000 * 20
+  unsigned long start_time = millis();
+  delay(5);
+  while (M5.Speaker.isPlaying()) {
+    M5.update();
+    //--------- Taking...
+    unsigned long elapsed_ms = millis() - start_time;
+    size_t current_sample = (elapsed_ms * 8000) / 1000;
+    if (current_sample + frame_size < total_samples) {
+      int64_t sum_sq = 0;
+      for (int i = 0; i < frame_size; i++) {
+        int16_t sample = pcm_data[current_sample + i];
+        sum_sq += sample * sample;
       }
-
-      https.end();
-    } else {
-      //M5.Display.println("Connection failed.");
-      Serial.println("Unable to connect to the server.");
+      float ratio = sqrt(sum_sq / (float)frame_size) / MAX_RMS;
+      if(avatar) avatar->setMouthOpenRatio(ratio);
     }
-    delete client;
-  } else {
-    Serial.println("Unable to create client.");
+    delay(20);
+  }
+  if(avatar) {
+    avatar->setMouthOpenRatio(0.0);
+    avatar->setSpeechText("");
   }
 }
+
+
+uint8_t *extractAudio(uint8_t* buff, String tag, size_t *audio_len) {
+  String buff_str = String((char *)buff);
+  int st = buff_str.indexOf(tag);
+  if(st > 0) {
+    st = buff_str.indexOf("\"", st+tag.length() +1);
+    int ed = buff_str.indexOf("\"", st+1);
+    int b64_len = ed-st-1;
+    uint8_t* buffer = buff+st+1;
+    mbedtls_base64_decode(nullptr, 0, audio_len, (const unsigned char*)buffer, b64_len);
+    int len = *audio_len + 1;
+    uint8_t* audio_buf = (uint8_t*)heap_caps_malloc(len, MALLOC_CAP_SPIRAM);
+
+    if (audio_buf != nullptr) {
+      mbedtls_base64_decode(audio_buf, len, audio_len, (const unsigned char*)buffer, b64_len);
+    }else{
+      M5_LOGE("Memory allocation paser Error.");
+    }
+    return audio_buf;
+  }else {
+    M5_LOGE("No '%s' found...",tag.c_str());
+    free(buff);
+  }
+  return nullptr;
+}
+
+
+bool playWavFile(String fname) {
+  const char *filename = fname.c_str();
+  const size_t buf_num = 3;
+  const size_t buf_size = 1024;
+  uint8_t wav_data[buf_num][buf_size];
+
+  auto file = LittleFS.open(filename, "r");
+  if (!file) { return false; }
+
+  /// Check Wav Header
+  wav_header_t wav_header;
+  file.read((uint8_t*)&wav_header, sizeof(wav_header_t));
+
+  if ( memcmp(wav_header.RIFF,    "RIFF",     4)
+    || memcmp(wav_header.WAVEfmt, "WAVEfmt ", 8)
+    || wav_header.audiofmt != 1
+    || wav_header.bit_per_sample < 8
+    || wav_header.bit_per_sample > 16
+    || wav_header.channel == 0
+    || wav_header.channel > 2
+    ) {
+    file.close();
+    return false;
+  }
+
+  file.seek(offsetof(wav_header_t, audiofmt) + wav_header.fmt_chunk_size);
+  sub_chunk_t sub_chunk;
+  file.read((uint8_t*)&sub_chunk, 8);
+
+  while(memcmp(sub_chunk.identifier, "data", 4)) {
+    if (!file.seek(sub_chunk.chunk_size, SeekMode::SeekCur)) { break; }
+    file.read((uint8_t*)&sub_chunk, 8);
+  }
+
+  if (memcmp(sub_chunk.identifier, "data", 4)) {
+    file.close();
+    return false;
+  }
+
+  int32_t data_len = sub_chunk.chunk_size;
+  bool flg_16bit = (wav_header.bit_per_sample >> 4);
+
+  beginSpeaker(200);
+  size_t idx = 0;
+  while (data_len > 0) {
+    size_t len = data_len < buf_size ? data_len : buf_size;
+    len = file.read(wav_data[idx], len);
+    data_len -= len;
+
+    if (flg_16bit) {
+      M5.Speaker.playRaw((const int16_t*)wav_data[idx], len >> 1, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
+    } else {
+      M5.Speaker.playRaw((const uint8_t*)wav_data[idx], len, wav_header.sample_rate, wav_header.channel > 1, 1, 0);
+    }
+    idx = (idx+1) % buf_num;
+  }
+  file.close();
+
+  endSpeaker();
+  return true;
+}
+
+bool playWav(String word){
+  String fname="/sounds/" + word + ".wav";
+  return playWavFile(fname);
+} 

@@ -1,25 +1,33 @@
+/**
+ * @file TouchButton.h
+ * @author Isao Hara (isao@hara-jp.com)
+ * @brief 
+ * @version 0.1
+ * @date 2026-05-16
+ * 
+ * @copyright Copyright (c) 2026
+ * 
+ */
+#pragma once
 #include <Arduino.h>
 #include <M5Unified.h>
+
 #include <map>
 #include <vector>
 #include <functional>
 
-enum FlickMotion {
-    Right = 1,
-    Left, Down, Up
-};
-
 
 class RectArea {
 private:
-    int x0 = 0;
-    int y0 = 0;
-    int width = 100;
-    int height = 40;
+    int x0;
+    int y0;
+    int width;
+    int height;
     std::function<void()> _callback;
+    String label;
 public:
-    RectArea(int x=0, int y=0, int w=100, int h=40):
-      x0(x), y0(y),width(w), height(h){}
+    RectArea(int x=0, int y=0, int w=100, int h=40, String label=""):
+      x0(x), y0(y),width(w), height(h){ this->label = label; }
 
     bool isInside(int x, int y){
         //M5_LOGI("Touch (%d, %d) (%d, %d, %d, %d)", x, y, x0, y0, x0+width, y0+height);
@@ -35,27 +43,28 @@ public:
         _callback = func;
     }
 
-    bool update(int x, int y){
-        if (hasCallback() && isInside(x, y) ){
-            _callback();
-            return true;
-        }
-        return false;
-    }
+    bool update(int x, int y);
+    void setLabel(String lbl);
+    void show();
+};
+
+enum FlickMotion {
+    Right = 1,
+    Left, Down, Up
 };
 
 class TouchButton {
 private:
-   int btnHeight = 200;
-   int btnWidth = 107;
-   int delayTime = 200;
+   int btnHeight;
+   int btnWidth;
+   int delayTime;
    std::map<String, std::function<void()>> _registeredHandlers;
-   std::vector<RectArea> buttons;
-   int flickFlag = 0;
+   int flickFlag;
    int state;
-
 public:
-    TouchButton() {};
+    std::vector<RectArea> buttons;
+public:
+    TouchButton(): btnHeight(200),btnWidth(107), delayTime(200), flickFlag(0), state(0) {};
 
     void init(int height=40){
       btnWidth = M5.Display.width() * 0.33;
@@ -67,10 +76,11 @@ public:
         _registeredHandlers[name] = func;
     }
 
-    void createButton(int x, int y, int w, int h, std::function<void()> func);
+    void createButton(int x, int y, int w, int h, std::function<void()> func, String label="");
     void updateOld();
     void update();
 
     int getState(){ return state; }
     void resetState(){ state = 0; }
+    void show();
 };

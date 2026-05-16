@@ -1,16 +1,30 @@
 /**
+ * @file M5WebServer.h
+ * @author Isao Hara (isao@hara-jp.com)
+ * @brief 
+ * @version 0.1
+ * @date 2026-05-16
+ * 
+ * @copyright Copyright (c) 2026
  * 
  */
 #pragma once
-#include <WiFi.h>
-#include <WebServer.h>
-#include <SD.h>
-#include <LittleFS.h>
-#include <ArduinoJson.h>
+#include <Arduino.h>
+#include <M5Unified.h>
+
 #include <map>
 #include <functional>
 
+#include <WiFi.h>
+#include <WebServer.h>
+#include <ArduinoJson.h>
 
+#include <SD.h>
+#include <LittleFS.h>
+
+
+/*
+ */
 class M5WebServer {
 private:
     WebServer server;
@@ -40,11 +54,10 @@ public:
         server.on("/"+name, HTTPMethod::HTTP_POST, func);
     }
 
-    void registerGetApi(String name, std::function<void()> func) {
-        _registeredHandlers[name] = func;
-        server.on("/"+name, func);
-    }
+    void registerPostApi(String name, std::function<void(void*)> func);
 
+    void registerGetApi(String name, std::function<void(void*)> func);
+    
     void setDocumentRoot(String top){
         if(SD.exists(top)){
             topDir = "/sd" + top;
@@ -61,9 +74,13 @@ public:
     void start() { server.begin(); started = true; }
     void update() { if (started) server.handleClient(); }
     WebServer& getServer() { return server; }
+    WiFiClient getClient() { return server.client(); }
+    void sendContent(String response) { server.sendContent(response); }
 
     String getArg(const char* name);
     String getBody();
     void response(int code, const char* content_type, const char* data);
-
+    void response(int code, const char* content_type, JsonDocument doc);
+    void response200() { response(200, "application/json", "{\"result\":\"OK\", \"error\": \"\"}"); }
+    DeserializationError requestJson(JsonDocument& doc);
 };
