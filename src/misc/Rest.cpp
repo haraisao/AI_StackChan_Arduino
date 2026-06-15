@@ -1,6 +1,6 @@
 /**
  * @file Rest.cpp
- * @author your name (you@domain.com)
+ * @author Isao Hara (isao@hara-jp.com)
  * @brief 
  * @version 0.1
  * @date 2026-05-10
@@ -10,12 +10,17 @@
  */
 #include <Rest.h>
 
+/**
+ *  Sample REST-API
+ */
 void handleHello(void *arg) {
   M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
   srv->response(200, "application/json", "{\"message\":\"Hello API\"}");
 }
 
-
+/**
+ * 
+ */
 void handleGetFileList(void *arg) {
   M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
   JsonDocument doc;

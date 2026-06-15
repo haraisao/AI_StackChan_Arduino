@@ -1,4 +1,12 @@
-/*
+/**
+ * @file StackChan.h
+ * @author Isao Hara (isao@hara-jp.com)
+ * @brief 
+ * @version 0.1
+ * @date 2026-05-16
+ * 
+ * @copyright Copyright (c) 2026
+ * 
  */
 #pragma once
 
@@ -34,3 +42,10 @@
 #include <GoogleSpeech.h>
 #include <Gemini.h>
 
+#include <ChatGPT.h>
+
+#include <HttpRequest.h>
+#include <TimeSignal.h>
+
+#include <Voicevox.h>
+#include <Vosk.h>

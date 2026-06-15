@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
     <head>
@@ -5,11 +6,21 @@
         <meta name="viewport" content="width=device-width,initial-scale=1.0">
         <meta charset="utf-8">
 
+        <style>
+         .top {
+            background-color: #aaaaff;
+            margin:0;
+            padding-top: 30px;
+            text-align: center;
+            height: 90px;
+          }
+        </style>
+
         <script type="text/javascript" src="js/joy.min.js"></script>
         <script type="text/javascript">
             async function get_camera_image(){
                 const img = document.getElementById('camera_image');
-               img.src = '/camera_image?t=' + new Date().getTime();
+                img.src = '/camera_image?t=' + new Date().getTime();
             }
 
             async function move(){
@@ -36,16 +47,16 @@
 
             async function face(){
                 var face_ = document.getElementById('face').value;
-                const res = await fetch('/face', {
+                const res = await fetch('/command', {
                     method: "POST",
-                    body: face_
+                    body: '{"cmd": "face", "data": "' + face_+ '""}'
                 });
             }
 
         </script>
     </head>
     <body>
-        <h1>アールティ版<br>スタックチャンの操作</h1>
+        <h1 class="top">RT版ｽﾀｯｸﾁｬﾝの操作</h1>
         <h3>首振り操作</h3>
 		<div >
             Duration:<input id="sp" type="text" value="600"/></br>
@@ -76,11 +87,12 @@
         <h3>Face</h3>
         顔の表情:
          <select id="face" onchange="face()">
-            <option value="normal">通常</option>
-            <option value="smile">笑い</option>
-            <option value="anger">怒り</option>
-            <option value="unhappy">悲しみ</option>
-            <option value="look_d">眠い</option>
+            <option value="Neutral">通常</option>
+            <option value="Happy">笑い</option>
+            <option value="Angry">怒り</option>
+            <option value="Sad">悲しみ</option>
+            <option value="Sleepy">眠い</option>
+            <option value="Doubt">疑い</option>
         </select><br>
         <!-- <img src="images/face.png" > -->
         <button onclick="get_camera_image()">カメラで撮影</button><br>
@@ -91,8 +103,10 @@
             <li><a href="asr_tts.html">音声認識＆音声合成</a></li>
             <li><a href="edit_file.html">ファイルの修正</a></li>
             <li><a href="/stream">カメラのストリーミング</a></li>
+<!--
+            <li><a href="params.html">パラメータの修正</a></li>
+-->
         </ul>
-
 
     </body>
 </html>

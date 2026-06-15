@@ -1,4 +1,12 @@
-/*
+/**
+ * @file Rest.h
+ * @author Isao Hara (isao@hara-jp.com)
+ * @brief 
+ * @version 0.1
+ * @date 2026-05-16
+ * 
+ * @copyright Copyright (c) 2026
+ * 
  */
 #pragma once
 #include <M5WebServer.h>
