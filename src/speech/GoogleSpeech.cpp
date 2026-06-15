@@ -74,7 +74,7 @@ void speakGoogleTTS(String text,  m5avatar::Avatar *avatar, StackchanSERVO *serv
       int16_t* pcm_data = (int16_t*)audio_buf + header_size;  // shift wav header
       size_t total_samples = audio_len - header_size;
 
-      beginSpeaker(200);
+      beginSpeaker(150);
       if (avatar) avatar->setSpeechText(text.c_str());
       M5.Speaker.playWav(audio_buf, audio_len);
       lipSyncAction(pcm_data, total_samples, avatar);
@@ -226,17 +226,20 @@ String requestGoogleAsr(unsigned char* b64_buffer, size_t b64_size) {
 /**
  * 
  */
-String executeGoogleAsr(int max_sec, m5avatar::Avatar *avatar) {
+String executeGoogleAsr(int max_sec, m5avatar::Avatar *avatar, float threshold) {
   int silence = 2;
+  //float threshold = 1000;
   int buff_len = SAMPLE_RATE*(max_sec+silence)*sizeof(int16_t);
-  M5_LOGI("Try to alloc memory.(%d)", buff_len);
+  //M5_LOGI("Try to alloc memory.(%d)", buff_len);
   int16_t* audio_data = (int16_t*)heap_caps_malloc(buff_len, MALLOC_CAP_SPIRAM);
-  M5_LOGI("Finish to alloc memory.(%d)", buff_len);
+  //M5_LOGI("Finish to alloc memory.(%d)", buff_len);
   String result="";
   if(audio_data != nullptr){
     memset(audio_data, 0, buff_len);
-    int audiolen = getSpeechFromMic(audio_data, max_sec);
+
+    int audiolen = getSpeechFromMic(audio_data, max_sec, threshold);
     M5_LOGI("Finish to capture audio.(%d)", audiolen);
+
     if (audiolen > SAMPLE_RATE) { // over 1sec
       if(avatar) avatar->setInfoText("音声認識中",TFT_BLACK, TFT_GREEN);
       result = doGoogleASR(audio_data, audiolen + SAMPLE_RATE*2);

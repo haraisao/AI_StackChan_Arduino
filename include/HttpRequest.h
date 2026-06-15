@@ -30,10 +30,10 @@
 #include <mbedtls/base64.h>
 
 void sendHttpPostRequest(String url, String rootCA, String postData, String apikey);
-int checkClientRead(WiFiClientSecure *client, int timeout);
-String readHttpHeader(WiFiClientSecure *client, int *code, int *contentLen, bool *chunk_flag);
-size_t sendRequestBody(WiFiClientSecure *client, unsigned char *buffer, int total_length);
-uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len);
+int checkClientRead(WiFiClient *client, int timeout);
+String readHttpHeader(WiFiClient *client, int *code, int *contentLen, bool *chunk_flag);
+size_t sendRequestBody(WiFiClient *client, unsigned char *buffer, int total_length);
+uint8_t *readResponseBody(WiFiClient *client, int contentLen, int *len);
 
 class Url {
 public:
@@ -42,6 +42,7 @@ public:
     int port;
     String url;
     String path;
+    bool use_ssl;
 
 public:
     Url() = default;
@@ -59,9 +60,10 @@ private:
 
 public:
     Url url;
-    String ca;;
-    std::vector<String> headers;;
-    WiFiClientSecure *client;
+    String ca;
+    std::vector<String> headers;
+    //WiFiClientSecure *client;
+    WiFiClient *client;
     int timeout;
     m5avatar::Avatar *avatar;
     StackchanSERVO *servo;
@@ -80,7 +82,7 @@ public:
     }
     void setRootCA(String fname){ ca = fname; }
     void setTimeout(int tm) { timeout = tm; }
-    bool sendHttpHeader(WiFiClientSecure *client, int content_length, String cmd="POST", bool v10=true);
+    bool sendHttpHeader(WiFiClient *client, int content_length, String cmd="POST", bool v10=true);
     bool postRequest(unsigned char *reqBuff, size_t total_length);
     //bool postRequestAsr(String preData, String postData, unsigned char *b64_buffer, size_t b64_size);
     bool postRequestAsr(String payload, unsigned char *b64_buffer, size_t b64_size);

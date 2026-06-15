@@ -18,6 +18,9 @@ static String interactionId="";
 static int randNum = random(1, 51);
 static int llm = 1; // 1: Gemini, 2: ChatGPT 
 
+Ltr5xx_Init_Basic_Para device_init_base_para = LTR5XX_BASE_PARA_CONFIG_DEFAULT;
+LTR5XX DistanceSensor;
+
 /* Instances  */
 Avatar avatar;
 StackchanSERVO servo;
@@ -120,12 +123,50 @@ void handleAsr(void *arg) {
   JsonDocument doc;
   DeserializationError error = srv->requestJson(doc);
   int max_sec = doc["max_seconds"];
+
+  float threshold = 1000;
   //  Dialog --- 
   avatar.setInfoText("音声取得中",TFT_BLACK, TFT_ORANGE);
-  String result = executeGoogleAsr(max_sec, &avatar);
+  String result = executeGoogleAsr(max_sec, &avatar, threshold);
+
   if (result.length() > 0) {
     M5_LOGI("Recognize: %s", result.c_str());
     executeDialog(result);
+  }
+  avatar.setInfoText("");
+  srv->response200();
+}
+
+
+void handleVoicevox(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
+  JsonDocument doc;
+  DeserializationError error = srv->requestJson(doc);
+  String url_ = doc["url"];
+  String txt_ = doc["message"];
+  int s_id_ = doc["style_id"];
+
+  //  Dialog --- 
+  speakVoicevox(url_, txt_, s_id_, &avatar, &servo);
+
+  avatar.setInfoText("");
+  srv->response200();
+}
+
+
+void handleVosk(void *arg) {
+  M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
+  JsonDocument doc;
+  DeserializationError error = srv->requestJson(doc);
+  String url_ = doc["url"];
+  int max_sec = doc["max_seconds"];
+  //  Dialog --- 
+  //M5_LOGI("url:%s, sec: %d", url_.c_str(), max_sec);
+  avatar.setInfoText("音声取得中",TFT_BLACK, TFT_ORANGE);
+  String result = executeVoskAsr(url_, max_sec, &avatar);
+  if (result.length() > 0) {
+    M5_LOGI("Recognize: %s", result.c_str());
+    //executeDialog(result);
   }
   avatar.setInfoText("");
   srv->response200();
@@ -135,6 +176,7 @@ void handleCommand(void *arg) {
   M5WebServer *srv = reinterpret_cast<M5WebServer *>(arg);
   JsonDocument doc;
   DeserializationError error = srv->requestJson(doc);
+
   String cmd = doc["cmd"];
   String data = doc["data"];
   if (cmd == "message"){
@@ -166,6 +208,7 @@ void callbackBtnA(){
   if(avatar.isDrawing()) {
     beep(0);
     avatar.stop();
+    servo.torque(false);
     delay(300);
     M5.Display.clearDisplay();
     M5.Display.setTextDatum(top_left);
@@ -178,8 +221,10 @@ void callbackBtnA(){
     M5.Display.setTextColor(WHITE);
 
     touchButton.show();
+
   }else{
     beep(1);
+    servo.torque(true);
     avatar.init(8);
   }
 }
@@ -213,6 +258,9 @@ void callbackBtnC(){
       M5.Display.setTextColor(GREEN);
       M5.Display.printf("\nIP: %s\n", WiFi.localIP().toString().c_str());
       M5.Display.setTextColor(WHITE);
+
+      String maddr = getWifiMacAddr();
+      M5.Display.printf("\nMac: %s\n", maddr.c_str());
     }else{
       setupWifi("/wlan.json");
       if (WiFi.status() == WL_CONNECTED) {
@@ -241,6 +289,7 @@ void callbackCenter(){
     }
   }
 }
+
 
 /*** Initialize servo motors */
 void initServoMotors() {
@@ -276,9 +325,26 @@ void setupRestAPIs() {
   myServer.registerPostApi("get_file", handleGetFile);
   myServer.registerPostApi("save_file", handleSaveFile);
   myServer.registerPostApi("command", handleCommand);
+  myServer.registerPostApi("voicevox", handleVoicevox);
+  myServer.registerPostApi("vosk", handleVosk);
   myServer.registerGetApi("camera_image", handleCameraImage);
   myServer.registerGetApi("stream", handleStreamPath); 
   //myServer.loadApiConfig("/api.yml");
+}
+
+void initDistanceSensor(){
+  device_init_base_para.ps_led_pulse_freq   = LTR5XX_LED_PULSE_FREQ_40KHZ;
+  device_init_base_para.ps_measurement_rate = LTR5XX_PS_MEASUREMENT_RATE_50MS;
+  device_init_base_para.als_gain            = LTR5XX_ALS_GAIN_48X;
+
+  if (!DistanceSensor.begin(&device_init_base_para)) {
+      M5_LOGE("Ltr553 Init Fail");
+      delay(10);
+      return;
+  }
+
+  DistanceSensor.setPsMode(LTR5XX_PS_ACTIVE_MODE);
+  DistanceSensor.setAlsMode(LTR5XX_ALS_ACTIVE_MODE);
 }
 
 void alert(){
@@ -286,7 +352,7 @@ void alert(){
   if (ctm == "12:00") {
     playWav("お昼です");
   } else if(ctm == "13:00") {
-    playWav("昼休みは終了です");
+    playWav("13時です");
    } else if(ctm == "15:00") {
     playWav("15時です");
   } else {
@@ -316,12 +382,18 @@ void setup() {
   }
 
   Serial.begin(115200);
+  if (!M5.Rtc.isEnabled()) {
+    Serial.println("RTC not found.");
+    for (;;) { vTaskDelay(500);}
+  }
+
+
 
   mountSd();
   mountLitteFs();
 
   initServoMotors();
-
+  initDistanceSensor();
   // Camera
   CoreS3.Camera.begin();
   CoreS3.Camera.sensor->set_framesize(CoreS3.Camera.sensor, FRAMESIZE_QVGA);
@@ -389,6 +461,20 @@ void loop() {
 
     // Set next
     M5.Rtc.setAlarmIRQ(120+randNum);
+  }
+
+  // Update battery level
+  avatar.setBatteryStatus(M5.Power.isCharging(),
+          M5.Power.getBatteryLevel());
+
+  // Flick actions
+  flickMotion(&touchButton, &servo);
+
+  // Display watch
+  showWatch(&avatar);
+
+  if(!avatar.isDrawing()){
+    Serial.printf("PS: %d,ALS: %d\r\n", DistanceSensor.getPsValue(),  DistanceSensor.getAlsValue());
   }
 
   // Update battery level

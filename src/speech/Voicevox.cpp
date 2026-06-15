@@ -146,16 +146,15 @@ void speakVoicevox(String url, String text, int speaker_id, m5avatar::Avatar *av
   requestDoc["data"] = text;
   requestDoc["speaker"] = speaker_id;
 
-  //size_t reqBody_size = 0;
-  //uint8_t *reqBody_buff = serializeJsonSpiram(requestDoc, &reqBody_size);
   String request_buff;
   serializeJson(requestDoc, request_buff);
   int reqBody_size = request_buff.length();
 
   const char *reqBody_buff = request_buff.c_str();
-  HttpRequest http = HttpRequest(url);
 
-  http.postRequest((unsigned char*)request_buff.c_str(), reqBody_size);
+  HttpRequest http = HttpRequest(url);
+  http.postRequest((unsigned char*)reqBody_buff, reqBody_size);
+
   if (servo) servo->moveDeltaXY(0, -5, 100);
   http.waitResponse();
   if (servo) servo->moveDeltaXY(0, 5, 100);
@@ -181,44 +180,6 @@ void speakVoicevox(String url, String text, int speaker_id, m5avatar::Avatar *av
       endSpeaker();
     }
     free(buff);
-
-#if 0
-    beginSpeaker(200);
-
-    String buff_str = String((char *)buff);
-    String tag = "\"audio\"";
-    int st = buff_str.indexOf(tag);
-    if(st > 0) {
-      st = buff_str.indexOf("\"", st + tag.length()+1);
-      int ed = buff_str.indexOf("\"", st+1);
-      int b64_len=ed-st-1;
-      uint8_t* buffer = buff+st+1;
-      // Decode audio data
-      size_t audio_len = 0;
-      mbedtls_base64_decode(nullptr, 0, &audio_len, (const unsigned char*)buffer, b64_len);
-      M5_LOGI("Audio: %d, %d", audio_len, b64_len);
-      uint8_t* audio_buf = (uint8_t*)heap_caps_malloc(audio_len, MALLOC_CAP_SPIRAM);
-
-      if (audio_buf != nullptr) {
-        mbedtls_base64_decode(audio_buf, audio_len, &audio_len, (const unsigned char*)buffer, b64_len);
-        int16_t* pcm_data = (int16_t*)audio_buf+44;  // shift wav header
-        size_t total_samples = audio_len-44;
-
-        if (avatar) avatar->setSpeechText(text.c_str());
-        M5.Speaker.playWav(audio_buf, audio_len);
-        lipSyncAction(pcm_data, total_samples, avatar);
-        free(audio_buf);
-
-        endSpeaker();
-      }else{
-        M5_LOGE("Memory allocation paser Error.");
-      }
-      free(buff);
-    } else {
-      M5_LOGE("No 'audioContent' found...%s", buff);
-      free(buff);
-    }
-#endif
   }
 }
 

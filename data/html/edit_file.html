@@ -154,31 +154,32 @@
 		        dirname.value=val.join("/") +"/"+dir_list.value;
                     }
                   }else{
-		    dirname.value=dirname.value +"/"+dir_list.value;
+		            dirname.value=dirname.value +"/"+dir_list.value;
                   }
-		}else{
-		  dirname.value=dir_list.value;
-		}
+		    }else{
+		        dirname.value=dir_list.value;
+		    }
                 get_dirlist=true;
-	}
+	    }
 
-	function select_file(){
+	    function select_file(){
             const dirname = document.getElementById('dir_name');
             const filename = document.getElementById('file_name');
             const file_list = document.getElementById('filelist');
             const editarea = document.getElementById('editarea');
 
             editarea.value="";
-	    if (dirname.value){
-	        filename.value=dirname.value +"/"+file_list.value;
-	    }else{
-		filename.value=file_list.value;
-	    }
+	        if (dirname.value){
+	            filename.value=dirname.value +"/"+file_list.value;
+	        }else{
+		        filename.value=file_list.value;
+	        }
             if(get_dirlist) {
                 return;
             }
             load_file();
-	}
+
+	    }
 
         function load_file_event(e){
             if (e.key == "Enter"){

@@ -46,3 +46,6 @@
 
 #include <HttpRequest.h>
 #include <TimeSignal.h>
+
+#include <Voicevox.h>
+#include <Vosk.h>

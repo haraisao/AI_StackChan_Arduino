@@ -82,69 +82,6 @@ void M5WebServer::loadApiConfig(const char* filepath) {
     file.close();
 }
 
-// WiFi接続 (SDの network.yml から読み込み)
-void M5WebServer::connect_wlan_from_sd(const char* filepath) {
-    if(!isFileExists(String(filepath))) {
-        M5.Display.setTextColor(RED);
-        M5.Display.println("WiFi config not found!");
-        M5.Display.setTextColor(WHITE);
-        return;
-    }
-    File file = getFileDescriptor(String(filepath));
-    
-    JsonDocument doc;
-    DeserializationError error = deserializeJson(doc, file);
-    file.close();
-
-    if (error) {
-        M5.Display.printf("JSON Parse Error: %s\n", error.c_str());
-        return;
-    }
-
-    JsonObject networks = doc.as<JsonObject>();
-    bool connected = false;
-
-    // JSON内の各エントリ（Home, Work, Mobile等）を順番に試行
-    for (JsonPair p : networks) {
-        String profileName = p.key().c_str();
-        const char* ssid = p.value()["essid"];
-        const char* pass = p.value()["passwd"];
-
-        M5.Display.printf("Connecting to %s...\n", profileName.c_str());
-        M5_LOGI("Profile: %s, SSID: %s", profileName.c_str(), ssid);
-
-        WiFi.begin(ssid, pass);
-
-        // 10秒のタイムアウト判定
-        unsigned long startAttemptTime = millis();
-        while (WiFi.status() != WL_CONNECTED && millis() - startAttemptTime < 10000) {
-            delay(500);
-            //M5.Display.print(".");
-            //M5_LOGI("Wait for connection: %s", profileName.c_str());
-        }
-
-        if (WiFi.status() == WL_CONNECTED) {
-            connected = true;
-            M5.Display.setTextColor(GREEN);
-            M5.Display.printf("\nSuccess! IP: %s\n", WiFi.localIP().toString().c_str());
-            M5.Display.setTextColor(WHITE);
-            M5_LOGI("Success IP: %s",  WiFi.localIP().toString().c_str());
-            break; // 接続できたらループを抜ける
-        } else {
-            M5.Display.println("\nTimeout / Failed.");
-            WiFi.disconnect();
-            delay(100);
-        }
-    }
-
-    if (connected == false) {
-        M5_LOGE("All Wifi attempts failed.");
-        M5.Display.setTextColor(RED);
-        M5.Display.println("All WiFi attempts failed.");
-        M5.Display.setTextColor(WHITE);
-    }   
-}
-
 
 String M5WebServer::getArg(const char* name) {
     if(server.hasArg(name)){

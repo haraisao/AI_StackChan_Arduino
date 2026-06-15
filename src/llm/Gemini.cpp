@@ -24,7 +24,7 @@ String genGeminiRequest(String txt, String interactionId) {
     // gemini-2.5-flash
     // gemini-2.5-flash-lite
     //doc["model"] = "gemini-2.5-flash-lite";
-    doc["model"] = "gemini-3.1-flash-lite-preview";
+    doc["model"] = "gemini-3.1-flash-lite";
   }
   doc["input"] = txt;
 
@@ -118,7 +118,7 @@ String parseGeminiResponse(char * buff, int buffLen) {
       int idx=0;
       for(;idx<n;idx++){
         String type_ = response["steps"][idx]["type"];
-        M5_LOGI("Type: [%d,%d]  %s", idx, n, type_.c_str());
+        //M5_LOGI("Type: [%d,%d]  %s", idx, n, type_.c_str());
         if (type_ == "model_output"){
           JsonArray obj2 = response["steps"][idx]["content"];
           result = getGeminiResultText(obj2);
@@ -183,13 +183,13 @@ String responseGeminiMpc(String result, String& interactionId, String func, Stri
   String apikey = getApiKey("GEMINI_KEY");
   WiFiClientSecure *client = new WiFiClientSecure;
   String interId = interactionId;
-  SpiRamAllocator spiRamAllocator;
+  //SpiRamAllocator spiRamAllocator;
 
   String model = loadFile("/gemini-model");
   String prompt = loadFile("/gemini-prompt");
   String info = "MCP応答中";
 
- if(model == "") model = "gemini-3.1-flash-lite-preview";
+  if(model == "") model = "gemini-3.1-flash-lite";
   String postData = genMcpRequest(model, func, callId, interactionId, result);
 
   if(avatar) avatar->setInfoText(info.c_str(), TFT_BLACK, TFT_YELLOW);

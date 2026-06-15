@@ -26,7 +26,7 @@ private:
     std::function<void()> _callback;
     String label;
 public:
-    RectArea(int x=0, int y=0, int w=100, int h=40, String label=""):
+    RectArea(int x, int y, int w, int h, String label=""):
       x0(x), y0(y),width(w), height(h){ this->label = label; }
 
     bool isInside(int x, int y){

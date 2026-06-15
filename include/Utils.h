@@ -27,6 +27,8 @@
 #include <ArduinoJson.h>
 #include <mbedtls/base64.h>
 
+#include "LTR5XX.h"
+
 #define SAMPLE_RATE 16000
 #define FRAME_SIZE  320
 
@@ -75,7 +77,7 @@ void talkWav(m5avatar::Avatar *avatar, uint8_t *wav_data,
 void showWatch(m5avatar::Avatar *avatar);
 
 String getApiKey(String key);
-int getSpeechFromMic(int16_t* audio_data, int max_frame);
+int getSpeechFromMic(int16_t* audio_data, int max_frame, float threshold=1000);
 void showRAM();
 void lipSyncAction(int16_t* pcm_data, size_t total_samples, m5avatar::Avatar *avatar);
 uint8_t *extractAudio(uint8_t* buff, String tag, size_t *audio_len);
@@ -128,3 +130,4 @@ struct __attribute__((packed)) sub_chunk_t
 
 bool playWavFile(String fname);
 bool playWav(String word);
+String getWifiMacAddr();

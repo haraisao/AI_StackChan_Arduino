@@ -22,38 +22,37 @@
  * @param chunk_flag 
  * @return String 
  */
-String readHttpHeader(WiFiClientSecure *client, int *code, int *contentLen, bool *chunk_flag){
+String readHttpHeader(WiFiClient *client, int *code, int *contentLen, bool *chunk_flag){
   String response = "";
-  while (client->connected()) {
+  while (client->connected() || client->available()) {
     String line = client->readStringUntil('\n');
+    //Serial.println(line);
     response += line + "\n";
     if (line.startsWith("HTTP/")){
       int n = line.indexOf(" ")+1;
       String res_code = line.substring(n, n+3);
       //M5_LOGI("===>%s", res_code.c_str());
       *code = res_code.toInt();
-    }
-    if (line.startsWith("Content-Length:")){
+    } else if (line.startsWith("Content-Length:")){
       *contentLen = line.substring(16).toInt();
-    }
-    if (line.startsWith("Transfer-Encoding: chunked")){
+    } else if (line.startsWith("Transfer-Encoding: chunked")){
       *chunk_flag = true;
-    }
-    if (line == "\r") {
+    } else if (line == "\r") {
       break;
     }
   }
+
   return response;
 }
 
-int checkClientRead(WiFiClientSecure *client, int timeout) {
+int checkClientRead(WiFiClient *client, int timeout) {
   fd_set fdset;
   struct timeval tv;
   FD_ZERO(&fdset);
-  FD_SET(client->socket(), &fdset);
+  FD_SET(client->fd(), &fdset);
   tv.tv_sec = timeout / 1000;
   tv.tv_usec = (timeout % 1000) * 1000;
-  return select(client->socket() + 1, &fdset, nullptr, nullptr, timeout<0 ? nullptr : &tv);
+  return select(client->fd() + 1, &fdset, nullptr, nullptr, timeout<0 ? nullptr : &tv);
 }
 /**
  * @brief 
@@ -63,7 +62,7 @@ int checkClientRead(WiFiClientSecure *client, int timeout) {
  * @param total_length 
  * @return size_t 
  */
-size_t sendRequestBody(WiFiClientSecure *client, unsigned char *buffer, int total_length) { 
+size_t sendRequestBody(WiFiClient *client, unsigned char *buffer, int total_length) { 
   size_t bytes_sent = 0;
   size_t chunk_size = 4096; 
   
@@ -85,14 +84,23 @@ size_t sendRequestBody(WiFiClientSecure *client, unsigned char *buffer, int tota
  * @param len 
  * @return uint8_t* 
  */
-uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len) {
+uint8_t *readResponseBody(WiFiClient *client, int contentLen, int *len) {
   uint8_t* buffer = (uint8_t*)heap_caps_malloc(contentLen, MALLOC_CAP_SPIRAM);
   memset(buffer, 0, contentLen);
   size_t buffLen = 0;
+  //M5_LOGI(">>>> %d", client->available());
+  /*
+  if(client->connected()){
+    Serial.println("Start");
+  }else{
+    Serial.println("No connection...");
+  }
+  */
   if (buffer != nullptr) {
     int size = 4096;
     unsigned long timeout_start = millis();
-    while (client->connected() && (millis() - timeout_start < 1000)) {
+    while ((client->connected() || client->available() > 0) && (millis() - timeout_start < 1000)) {
+      // Serial.print(".");
       if((size=client->available())){
         if(buffLen + size > contentLen){
           free(buffer);
@@ -110,7 +118,14 @@ uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len) {
       }
     }
     *len = buffLen;
+  }else{
+    M5_LOGE("Fail to alloc memory.");
   }
+#if 0
+  if(*len < 200){
+    M5_LOGI("buf: %s, len: %d", buffer, *len);
+  }
+#endif
   return buffer;
 }
 
@@ -122,41 +137,49 @@ uint8_t *readResponseBody(WiFiClientSecure *client, int contentLen, int *len) {
  * @param apikey 
  */
 void sendHttpPostRequest(String url, String postData, String apikey) {
-  WiFiClientSecure *client = new WiFiClientSecure;
+    WiFiClient *client;
+    Url url_(url);
 
-  if (client) {
-    client->setInsecure();
-    client->setTimeout(20);
-
-    HTTPClient https;
-    
-    if (https.begin(*client, url)) {
-      //M5.Display.println("Sending POST...");
-      Serial.println("Starting HTTPS POST...");
-      https.addHeader("Content-Type", "application/json");
-      https.addHeader("Authorization", "Bearer "+apikey);
-
-      int httpResponseCode = https.POST(postData);
-
-      if (httpResponseCode > 0) {
-        Serial.printf("HTTP Response code: %d\n", httpResponseCode);
-        String payload = https.getString();
-        Serial.println("Response Payload: ");
-        Serial.println(payload);
-      } else {
-        Serial.printf("Error code: %d\n", httpResponseCode);
-        Serial.println(https.errorToString(httpResponseCode).c_str());
-      }
-
-      https.end();
-    } else {
-      //M5.Display.println("Connection failed.");
-      Serial.println("Unable to connect to the server.");
+    if(url_.use_ssl){
+        WiFiClientSecure *secureClient = new WiFiClientSecure();
+        secureClient->setInsecure();
+        client = secureClient;
+    }else{
+        client = new WiFiClient();
     }
-    delete client;
-  } else {
-    Serial.println("Unable to create client.");
-  }
+
+    if (client) {
+        client->setTimeout(20);
+
+        HTTPClient https;
+        
+        if (https.begin(*client, url)) {
+        //M5.Display.println("Sending POST...");
+        Serial.println("Starting HTTPS POST...");
+        https.addHeader("Content-Type", "application/json");
+        https.addHeader("Authorization", "Bearer "+apikey);
+
+        int httpResponseCode = https.POST(postData);
+
+        if (httpResponseCode > 0) {
+            Serial.printf("HTTP Response code: %d\n", httpResponseCode);
+            String payload = https.getString();
+            Serial.println("Response Payload: ");
+            Serial.println(payload);
+        } else {
+            Serial.printf("Error code: %d\n", httpResponseCode);
+            Serial.println(https.errorToString(httpResponseCode).c_str());
+        }
+
+        https.end();
+        } else {
+        //M5.Display.println("Connection failed.");
+        Serial.println("Unable to connect to the server.");
+        }
+        delete client;
+    } else {
+        Serial.println("Unable to create client.");
+    }
 }
 
 /**** Url */
@@ -169,8 +192,10 @@ void Url::setUrl(String url){
     this->proto = url.substring(0, n);
     if(this->proto == "https"){
         this->port = 443;
+        this->use_ssl = true;
     }else if(this->proto == "http"){
         this->port = 80;
+        this->use_ssl = false;
     }
     this->host = url.substring(n+3, url.indexOf("/", n+3));
     int p = this->host.indexOf(":");
@@ -200,17 +225,11 @@ void HttpRequest::setUrl(String url){
     this->url = Url(url);
 }
 
-bool HttpRequest::sendHttpHeader(WiFiClientSecure *client, int content_length, String cmd, bool v10) {
+
+bool HttpRequest::sendHttpHeader(WiFiClient *client, int content_length, String cmd, bool v10) {
     if (client) {
-        if(url.proto == "https"){
-            String rootCA = readRootCA(ca.c_str());
-            if(rootCA == ""){
-                client->setInsecure();
-            }else{
-                client->setCACert(rootCA.c_str());
-            }
-        }
         client->setTimeout(timeout);
+        //M5_LOGI("host: %s, port: %d",url.host.c_str(), url.port );
         if (client->connect(url.host.c_str(), url.port)) {
             // --- Send Header
             String url_ = url.path;
@@ -240,7 +259,21 @@ bool HttpRequest::sendHttpHeader(WiFiClientSecure *client, int content_length, S
 }
 
 bool HttpRequest::postRequest(unsigned char *reqBuff, size_t total_length) {
-    client = new WiFiClientSecure;
+    if(url.use_ssl){
+        WiFiClientSecure *secureClient = new WiFiClientSecure();
+        String rootCA = readRootCA(ca.c_str());
+        if(rootCA == ""){
+            secureClient->setInsecure();
+        }else{
+            secureClient->setCACert(rootCA.c_str());
+        }
+        client = secureClient;
+        M5_LOGI("Use SSL");
+    }else{
+        client = new WiFiClient();
+        M5_LOGI("Non secure connection");
+    }
+
     if (sendHttpHeader(client, total_length, "POST", true)){
         size_t bytes_sent= sendRequestBody(client, reqBuff, total_length);
         //M5_LOGI("%s", reqBuff);
@@ -253,7 +286,18 @@ bool HttpRequest::postRequest(unsigned char *reqBuff, size_t total_length) {
 }
 
 bool HttpRequest::postRequestAsr(String payload, unsigned char *b64_buffer, size_t b64_size) {
-    client = new WiFiClientSecure;
+    if(url.use_ssl){
+        WiFiClientSecure *secureClient = new WiFiClientSecure();
+        String rootCA = readRootCA(ca.c_str());
+        if(rootCA == ""){
+            secureClient->setInsecure();
+        }else{
+            secureClient->setCACert(rootCA.c_str());
+        }
+        client = secureClient;
+    }else{
+        client = new WiFiClient();
+    }
 
     String json_start = "{\"config\":{\"encoding\":\"LINEAR16\",\"sampleRateHertz\":16000,\"languageCode\":\"ja-JP\"},\"audio\":{\"content\":\"";
     String json_end = "\"}}";
@@ -261,8 +305,9 @@ bool HttpRequest::postRequestAsr(String payload, unsigned char *b64_buffer, size
     String tag = "_B64_AUDIO_";
     String preData = payload.substring(0, payload.indexOf(tag));
     String postData = payload.substring(payload.indexOf(tag)+tag.length());
-    M5_LOGI("%s", preData.c_str());
-    M5_LOGI("%s", postData.c_str());
+
+    //M5_LOGI("%s", preData.c_str());
+    //M5_LOGI("%s", postData.c_str());
 
     int total_length = b64_size + preData.length() + postData.length();
 
@@ -304,6 +349,7 @@ void HttpRequest::waitResponse() {
             }
             res = client->available();
         }
+        //M5_LOGI("===> %d", res);
     }
 }
 /*

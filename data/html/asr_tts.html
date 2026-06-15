@@ -47,6 +47,25 @@
                 console.log(response);
             }
 
+            async function request_vosk_asr(){
+                var max_seconds = Number(document.getElementById("max_seconds").value);
+                var vosk_url = document.getElementById("url").value;
+
+                var max_count = 0;
+                var threshold = 0;
+                var url ="/vosk";
+
+                const response = await fetch(url,{
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8",
+                    },
+                    body: JSON.stringify({'max_seconds': max_seconds, 'url': vosk_url})
+                }
+                );
+                console.log(response);
+            }
+
             async function request_info(){
                 var msg = document.getElementById("message").value;
                 var url ="/command";
@@ -103,6 +122,22 @@
                 );
                 console.log(response);
             }
+
+            async function request_voicevox_tts(){
+                var txt = document.getElementById("tts").value;
+                var voicevox_url = document.getElementById("url").value;
+                var s_id = document.getElementById("style_id").value;
+                var url ="/voicevox";
+                const response = await fetch(url,{
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "text/plain;charset=utf-8",
+                    },
+                    body: '{"url": "' +voicevox_url+ '", "message": "' + txt + '", "style_id": ' + s_id + '}'
+                }
+                );
+                console.log(response);
+            }
         </script>
         <title>音声認識＆音声合成</title>
     </head>
@@ -113,6 +148,10 @@
        <button onclick="request_tts()">TTS</button><br>
        <button onclick="save_tts_wav()">Save Wav</button>
        <button onclick="play_wav()">Play Wav</button>
+        <br>
+        Voicevox: <input type="text" id="url" value="" style="width:400px"> <input type="text" id="style_id" value="2" size="4"><br>
+        <button onClick="request_voicevox_tts()">TTS</button>
+
 
         <h2>音声認識</h2>
         最大録音時間（秒）:<input type="text" id="max_seconds" size="2" value="5"/><br>
@@ -120,7 +159,7 @@
         発話区間推定　閾値:<input type="text" id="threshold" size="5" value="41"/><br>
         発話区間推定　連続検出回数<input type="text" id="max_count" size="2" value="1"/><br>
 -->
-        <button onclick="request_asr()">スタート</button>
+        <button onclick="request_asr()">スタート</button><button onclick="request_vosk_asr()">スタートVOSK</button>
 
         <h2>Gemini or ChatGPT</h2>
         <textarea id="gemini" cols="80" rows="5"></textarea><br>

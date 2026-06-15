@@ -13,7 +13,6 @@
 
 #define JST 3600 * 9 
 
-
 m5avatar::Expression getExpression(String val){
   std::map<String, m5avatar::Expression> faceType2 = {
     {"Neutral", m5avatar::Expression::Neutral},
@@ -401,7 +400,7 @@ void resetVolume() {
 void beginSpeaker(int v) {
   M5.Speaker.begin();
   delay(100);
-  M5.Speaker.setVolume(200);
+  M5.Speaker.setVolume(v);
 }
 
 void endSpeaker(){
@@ -538,7 +537,7 @@ unsigned char *b64EncodeAudio(int16_t* audio_data, int audio_len, int *outlen) {
  * @param max_sec 
  * @return int 
  */
-int getSpeechFromMic(int16_t* audio_data, int max_sec) {
+int getSpeechFromMic(int16_t* audio_data, int max_sec, float threshold) {
     int16_t audio_frame[FRAME_SIZE];
 
     int last_state = 0;
@@ -548,7 +547,7 @@ int getSpeechFromMic(int16_t* audio_data, int max_sec) {
     int max_frame = max_sec * SAMPLE_RATE/FRAME_SIZE;
 
     //float threshold = 300;
-    float threshold = 1000;
+    //float threshold = 1000;
     M5.Mic.begin();
     M5.Mic.record(audio_frame, FRAME_SIZE, SAMPLE_RATE);
     while (M5.Mic.isRecording()) ;
@@ -840,7 +839,7 @@ bool playWavFile(String fname) {
   int32_t data_len = sub_chunk.chunk_size;
   bool flg_16bit = (wav_header.bit_per_sample >> 4);
 
-  beginSpeaker(200);
+  beginSpeaker(150);
   size_t idx = 0;
   while (data_len > 0) {
     size_t len = data_len < buf_size ? data_len : buf_size;
@@ -863,4 +862,12 @@ bool playWavFile(String fname) {
 bool playWav(String word){
   String fname="/sounds/" + word + ".wav";
   return playWavFile(fname);
-} 
+}
+
+String getWifiMacAddr() {
+  char macAdr[24];
+  byte mac[6];
+  WiFi.macAddress(mac);
+  sprintf(macAdr, "%02x:%02x:%02x:%02x:%02x:%02x", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+  return String(macAdr);
+}

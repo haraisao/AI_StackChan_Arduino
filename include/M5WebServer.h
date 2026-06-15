@@ -15,7 +15,6 @@
 #include <map>
 #include <functional>
 
-#include <WiFi.h>
 #include <WebServer.h>
 #include <ArduinoJson.h>
 
@@ -67,9 +66,6 @@ public:
     }
     // api.yml を読み込んで URL パスと関数をバインド
     void loadApiConfig(const char* filepath);
-
-    // WiFi接続 (SDの network.yml から読み込み)
-    void connect_wlan_from_sd(const char* filepath);
 
     void start() { server.begin(); started = true; }
     void update() { if (started) server.handleClient(); }
