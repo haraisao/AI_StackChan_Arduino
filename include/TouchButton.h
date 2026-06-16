@@ -16,7 +16,6 @@
 #include <vector>
 #include <functional>
 
-
 class RectArea {
 private:
     int x0;

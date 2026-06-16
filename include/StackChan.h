@@ -35,17 +35,16 @@
 #include <ArduinoJson.h>
 #include <mbedtls/base64.h>
 
-#include <Rest.h>
-#include <TouchButton.h>
-#include <Utils.h>
+#include "Rest.h"
+#include "TouchButton.h"
+#include "Utils.h"
 
-#include <GoogleSpeech.h>
-#include <Gemini.h>
+#include "GoogleSpeech.h"
+#include "Gemini.h"
+#include "ChatGPT.h"
 
-#include <ChatGPT.h>
+#include "HttpRequest.h"
+#include "TimeSignal.h"
 
-#include <HttpRequest.h>
-#include <TimeSignal.h>
-
-#include <Voicevox.h>
-#include <Vosk.h>
+#include "Voicevox.h"
+#include "Vosk.h"

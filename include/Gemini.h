@@ -13,16 +13,17 @@
 #include <M5Unified.h>
 #include <time.h>
 
-#include <Avatar.h>
 #include <ArduinoJson.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 
-#include <Motion.h>
-#include <GoogleSpeech.h>
+#include <Avatar.h>
 
-#include <Utils.h>
-#include <HttpRequest.h>
+#include "Motion.h"
+#include "GoogleSpeech.h"
+
+#include "Utils.h"
+#include "HttpRequest.h"
 
 String genGeminiRequest(String txt, String interactionId);
 String genMcpRequest(String model, String func, String callId, String interactionId, String result);

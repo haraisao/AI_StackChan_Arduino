@@ -8,7 +8,7 @@
  * @copyright Copyright (c) 2026
  * 
  */
-#include <StackChan.h>
+#include "StackChan.h"
 
 using namespace m5avatar;
 

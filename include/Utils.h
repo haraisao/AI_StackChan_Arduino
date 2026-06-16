@@ -13,11 +13,6 @@
 #include <M5Unified.h>
 #include <M5CoreS3.h>
 #include <esp_camera.h>
-
-#include <Avatar.h>
-#include <map>
-#include <time.h>
-
 #include <WiFi.h>
 #include <LittleFS.h>
 #include <SD.h>
@@ -26,6 +21,11 @@
 #include <HTTPClient.h>
 #include <ArduinoJson.h>
 #include <mbedtls/base64.h>
+
+#include <map>
+#include <time.h>
+
+#include <Avatar.h>
 
 #include "LTR5XX.h"
 

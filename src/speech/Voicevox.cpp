@@ -8,9 +8,7 @@
  * @copyright Copyright (c) 2026
  * 
  */
-#include <Voicevox.h>
-
-
+#include "Voicevox.h"
 
 void speakVoicevoxOrg(String host, String text, int speaker_id, m5avatar::Avatar *avatar, StackchanSERVO *servo) {
   String hostname = host.substring(0, host.indexOf(":"));
