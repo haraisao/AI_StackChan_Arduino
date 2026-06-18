@@ -26,6 +26,9 @@ jobs:
       - name: Build PlatformIO Project
         run: pio run
 
+      - name: Build LitelFS
+        run: pio run --target buildfs
+
       - name: Prepare firmware directory
         run: |
           mkdir -p public/firmware
