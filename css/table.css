@@ -1,0 +1,91 @@
+/*
+
+*/
+
+.blue {
+   background-color: #aaaaff;
+}
+
+.centralize {
+   text-align: center;
+}
+
+.green {
+   background-color: #aaffaa;
+}
+
+/** Main Fram **/
+.mainframe {
+    border-collapse: collapse;
+    border:1px solid #333;
+    width:100%;
+}
+
+.mainframe td {
+    border-collapse: collapse;
+    border:1px solid #333;
+    vertical-align: middle;
+}
+
+.mainframe th {
+    border-collapse: collapse;
+    border:1px solid #333;
+}
+
+.mainframe tr.title td {
+    background-color:rgb(110, 110, 110);
+    color: white;
+    text-align: center;
+    font-size: 12pt;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+.mainframe td.title {
+    background-color:rgb(110, 110, 110);
+    color: white;
+    text-align: center;
+    font-size: 12pt;
+    font-weight: normal;
+    vertical-align: middle;
+}
+
+/** No border **/
+.no-border,
+.no-border tr,
+.no-border th,
+.no-border td {
+    border-collapse: collapse;
+    border-style:none;
+}
+
+/** Simple bar **/
+.simplebar,
+.simplebar td {
+    border-collapse: collapse;
+    border:1px solid #333;
+    /*text-align:center; */
+}
+
+.simplebar th {
+    border-collapse: collapse;
+    border:1px solid #333;
+    text-align: center !important;
+    background-color:rgb(132, 218, 218);
+}
+
+.simplebar tr.title td {
+    background-color:rgb(132, 218, 218);
+    text-align: center;
+}
+
+/** Simple Frame **/
+.simpleframe,
+.simpleframe th,
+.simpleframe td {
+    border-collapse: collapse;
+    /*border-left:1px solid #333;
+    border-right:1px solid #333;*/
+    /*text-align:center; */
+}
+

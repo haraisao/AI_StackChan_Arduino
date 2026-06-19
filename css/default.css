@@ -1,0 +1,55 @@
+/*
+*/
+@import url("table.css");
+
+
+
+.alert {
+  clear: both;
+  width:90%;
+  margin-left:5%;
+  border: 1px solid black; 
+  background-color: #ffffff;
+  color: #ff0000;
+}
+
+.alert-message{
+  display: inline-block;
+  padding-right: 0.5em;
+  animation: marquee 1s linear infinite;
+}
+
+/*
+@keyframes marquee {
+  0%   { transform: translateX(0); }
+  100% { transform: translateX(-100%); }
+}
+*/
+
+.content{
+  width:80%;
+  float:left;
+}
+
+.content div {
+  margin-left: 20px;
+}
+
+/*
+.title {
+  padding-top: 30px;
+  text-align: center;
+  align-items: center;
+  height: 90px;
+  background-color: #eeeeff;
+}
+*/
+
+.top-title {
+  padding-top: 30px;
+  margin-bottom: 20px;
+  text-align: center;
+  align-items: center;
+  height: 150px;
+  background-color: #eeeeff;
+}
