@@ -32,7 +32,7 @@ jobs:
       - name: Prepare firmware directory
         run: |
           mkdir -p public/firmware
-          rm public/firmware/*
+          rm -f public/firmware/*
           cp .pio/build/*/*.bin public/firmware/
 
       - name: Deploy to GitHub Pages
