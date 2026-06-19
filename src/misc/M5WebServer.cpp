@@ -8,7 +8,10 @@
  * @copyright Copyright (c) 2026
  * 
  */
+#include <Arduino.h>
 #include <M5Unified.h>
+#include <ArduinoJson.h>
+
 #include "M5WebServer.h"
 #include "Utils.h"
 

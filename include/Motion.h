@@ -9,10 +9,7 @@
  * 
  */
 #pragma once
-
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <M5CoreS3.h>
+//#include <M5CoreS3.h>
 
 #include <Stackchan_servo.h>
 #include <Stackchan_system_config.h>

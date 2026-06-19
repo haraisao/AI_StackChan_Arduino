@@ -8,6 +8,10 @@
  * @copyright Copyright (c) 2026
  * 
  */
+#include <Arduino.h>
+#include <M5Unified.h>
+#include <HTTPClient.h>
+
 #include "HttpRequest.h"
 #include "Utils.h"
 

@@ -9,18 +9,11 @@
  * 
  */
 #pragma once
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <M5CoreS3.h>
-#include <esp_camera.h>
 #include <WiFi.h>
 #include <LittleFS.h>
 #include <SD.h>
 
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
 #include <ArduinoJson.h>
-#include <mbedtls/base64.h>
 
 #include <map>
 #include <time.h>

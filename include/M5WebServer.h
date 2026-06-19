@@ -9,17 +9,11 @@
  * 
  */
 #pragma once
-#include <Arduino.h>
-#include <M5Unified.h>
-
 #include <map>
 #include <functional>
 
 #include <WebServer.h>
-#include <ArduinoJson.h>
-
 #include <SD.h>
-#include <LittleFS.h>
 
 
 /*

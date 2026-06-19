@@ -9,25 +9,11 @@
  * 
  */
 #pragma once
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <M5CoreS3.h>
-
-#include <Stackchan_system_config.h>
+#include <vector>
 #include <Stackchan_servo.h>
 #include <Avatar.h>
 
-#include <map>
-#include <vector>
-
-#include <WiFi.h>
-#include <LittleFS.h>
-#include <SD.h>
-
 #include <WiFiClientSecure.h>
-#include <HTTPClient.h>
-#include <ArduinoJson.h>
-#include <mbedtls/base64.h>
 
 void sendHttpPostRequest(String url, String rootCA, String postData, String apikey);
 int checkClientRead(WiFiClient *client, int timeout);

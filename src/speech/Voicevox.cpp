@@ -8,6 +8,9 @@
  * @copyright Copyright (c) 2026
  * 
  */
+#include <Arduino.h>
+#include <M5Unified.h>
+#include <mbedtls/base64.h>
 #include "Voicevox.h"
 
 void speakVoicevoxOrg(String host, String text, int speaker_id, m5avatar::Avatar *avatar, StackchanSERVO *servo) {

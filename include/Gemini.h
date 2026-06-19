@@ -9,14 +9,6 @@
  * 
  */
 #pragma once
-#include <Arduino.h>
-#include <M5Unified.h>
-#include <time.h>
-
-#include <ArduinoJson.h>
-#include <WiFiClientSecure.h>
-#include <HTTPClient.h>
-
 #include <Avatar.h>
 
 #include "Motion.h"

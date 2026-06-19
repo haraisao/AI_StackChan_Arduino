@@ -9,6 +9,8 @@
  * 
  */
 #define MOTION_LIB
+#include <Arduino.h>
+#include <M5Unified.h>
 #include "Motion.h"
 
 static int isMoving=0;

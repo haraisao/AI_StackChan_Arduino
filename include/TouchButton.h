@@ -9,8 +9,6 @@
  * 
  */
 #pragma once
-#include <Arduino.h>
-#include <M5Unified.h>
 
 #include <map>
 #include <vector>

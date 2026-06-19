@@ -8,6 +8,10 @@
  * @copyright Copyright (c) 2026
  * 
  */
+#include <Arduino.h>
+#include <M5Unified.h>
+#include <M5CoreS3.h>
+#include <ArduinoJson.h>
 #include "Rest.h"
 
 /**

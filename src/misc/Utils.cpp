@@ -8,6 +8,12 @@
  * @copyright Copyright (c) 2026
  * 
  */
+#include <Arduino.h>
+#include <M5Unified.h>
+#include <M5CoreS3.h>
+#include <esp_camera.h>
+#include <mbedtls/base64.h>
+
 #include "Utils.h"
 #include <WiFiAP.h>
 

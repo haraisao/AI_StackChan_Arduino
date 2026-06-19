@@ -9,9 +9,6 @@
  * 
  */
 #pragma once
-#include <Arduino.h>
-#include <M5Unified.h>
-
 #include "HttpRequest.h"
 #include "Utils.h"
 #include "Motion.h"

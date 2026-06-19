@@ -8,7 +8,27 @@
  * @copyright Copyright (c) 2026
  * 
  */
-#include "StackChan.h"
+#include <Arduino.h>
+#include <M5Unified.h>
+#include <M5CoreS3.h>
+
+#include <Stackchan_system_config.h>
+#include <Stackchan_servo.h>
+#include <Avatar.h>
+
+#include "M5WebServer.h"
+#include "Rest.h"
+#include "Utils.h"
+
+#include "TouchButton.h"
+#include "TimeSignal.h"
+
+#include "GoogleSpeech.h"
+#include "Gemini.h"
+#include "ChatGPT.h"
+
+#include "Voicevox.h"
+#include "Vosk.h"
 
 using namespace m5avatar;
 
