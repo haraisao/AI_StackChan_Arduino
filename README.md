@@ -1,4 +1,6 @@
 # このリポジトリについて
+[![ビルドステータス](https://github.com/haraisao/AI_StackChan_Arduino/actions/workflows/build-and-deploy.yml/badge.svg)](https://github.com/haraisao/AI_StackChan_Arduino/actions)
+<br>
 これは、RT版およびタカオ版ｽﾀｯｸﾁｬﾝのサンプルプログラムです。
 
 [m5stack-avatar](https://github.com/stack-chan/m5stack-avatar)と[stackchan-arduino](https://github.com/stack-chan/stackchan-arduino)をベースに使用して、GoogleAPIを利用した対話機能を付加したものです。
