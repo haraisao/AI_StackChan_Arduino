@@ -23,15 +23,16 @@ jobs:
       - name: Install PlatformIO Core
         run: pip install --upgrade platformio
 
-      - name: Build PlatformIO Project
-        run: pio run
-
       - name: Build LitelFS
         run: pio run --target buildfs
+
+      - name: Build PlatformIO Project
+        run: pio run
 
       - name: Prepare firmware directory
         run: |
           mkdir -p public/firmware
+          rm public/firmware/*
           cp .pio/build/*/*.bin public/firmware/
 
       - name: Deploy to GitHub Pages
