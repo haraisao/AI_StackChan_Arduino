@@ -27,7 +27,8 @@
 */
 
 .content{
-  width:80%;
+  width: 90%;
+  margin-left: 8%;
   float:left;
 }
 
