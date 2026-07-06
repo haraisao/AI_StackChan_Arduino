@@ -492,18 +492,9 @@ void loop() {
 
   // Display watch
   showWatch(&avatar);
-
+/*
   if(!avatar.isDrawing()){
     Serial.printf("PS: %d,ALS: %d\r\n", DistanceSensor.getPsValue(),  DistanceSensor.getAlsValue());
   }
-
-  // Update battery level
-  avatar.setBatteryStatus(M5.Power.isCharging(),
-          M5.Power.getBatteryLevel());
-
-  // Flick actions
-  flickMotion(&touchButton, &servo);
-
-  // Display watch
-  showWatch(&avatar);
+*/
 }
