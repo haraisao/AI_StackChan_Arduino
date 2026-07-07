@@ -380,6 +380,33 @@ void alert(){
   }
 }
 
+JsonDocument wlan_config;
+void execute_serial_cmd(String line) {
+  std::vector<String> argv;
+  std::vector<String> delims={ " " };
+  splitString(line, delims, argv);
+  if (argv[0] == "ShowWifi"){
+    if( load_wlan_config("/wlan.json", wlan_config) ){
+      JsonObject networks = wlan_config.as<JsonObject>();
+      Serial.printf("\r\nWifi setting: \r\n");
+      for (JsonPair p : networks) {
+        String profileName = p.key().c_str();
+        const char* ssid = p.value()["essid"];
+        const char* pass = p.value()["passwd"];
+        Serial.printf("   %s: %s, %s\r\n", profileName.c_str(),ssid, pass);
+      }
+    }else{
+      Serial.println("Fail to load Wifi setting.");
+    }
+    
+  } else if (argv[0] == "ShowMem"){
+    showRAM();
+  }else{
+    Serial.print("Input: ");
+    Serial.println(line);
+  }
+}
+
 /**
  * @brief 
  * 
@@ -405,8 +432,6 @@ void setup() {
     Serial.println("RTC not found.");
     for (;;) { vTaskDelay(500);}
   }
-
-
 
   mountSd();
   mountLitteFs();
@@ -498,8 +523,7 @@ void loop() {
   if(!avatar.isDrawing()) {
     if (Serial.available() > 0) {
       String line = Serial.readStringUntil('\n');
-      Serial.print("--- ");
-      Serial.println(line);
+      execute_serial_cmd(line);
     }
   }
 #endif

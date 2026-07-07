@@ -654,6 +654,23 @@ bool connect_wlan(const char* filepath) {
     return false;
 }
 
+bool load_wlan_config(const char* filepath, JsonDocument& doc) {
+    if(!isFileExists(String(filepath))) {
+      Serial.printf("WiFi config not found!: %s\r\n", filepath);
+      return false;
+    }
+    File file = getFileDescriptor(String(filepath));
+    DeserializationError error = deserializeJson(doc, file);
+    file.close();
+
+    if (error) {
+      Serial.printf("JSON Parse Error: %s\r\n", error.c_str());
+      return false;
+    }
+
+    return true;
+}
+
 void setupWifi(String conf_file){
   M5.Display.println("Setup Wifi");
   if(connect_wlan(conf_file.c_str())) return;

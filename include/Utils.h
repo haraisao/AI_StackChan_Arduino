@@ -60,6 +60,8 @@ void beginSpeaker(int v);
 void endSpeaker();
 void beep(int typ);
 
+bool connect_wlan(const char* filepath);
+bool load_wlan_config(const char* filepath, JsonDocument& doc);
 void setupWifi(String conf_file);
 
 int convertToInt(uint8_t *buff);
