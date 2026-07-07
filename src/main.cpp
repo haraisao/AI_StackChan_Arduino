@@ -241,7 +241,6 @@ void callbackBtnA(){
     M5.Display.setTextColor(WHITE);
 
     touchButton.show();
-
   }else{
     beep(1);
     servo.torque(true);
@@ -475,10 +474,8 @@ void loop() {
     randNum = random(1, 51);
     int face = randNum % 6;    
     avatar.setExpression(getExpressionIndex(face));
-
     int m_id = randNum % 10;
     if (m_id > 1 && m_id < 6) { myMotion(&servo, &system_config, m_id); }
-
     // Set next
     M5.Rtc.setAlarmIRQ(120+randNum);
   }
@@ -497,4 +494,13 @@ void loop() {
     Serial.printf("PS: %d,ALS: %d\r\n", DistanceSensor.getPsValue(),  DistanceSensor.getAlsValue());
   }
 */
+#if 1
+  if(!avatar.isDrawing()) {
+    if (Serial.available() > 0) {
+      String line = Serial.readStringUntil('\n');
+      Serial.print("--- ");
+      Serial.println(line);
+    }
+  }
+#endif
 }
