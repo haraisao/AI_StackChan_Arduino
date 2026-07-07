@@ -386,7 +386,7 @@ void execute_serial_cmd(String line) {
   std::vector<String> delims={ " " };
   splitString(line, delims, argv);
   if (argv[0] == "ShowWifi"){
-    if( load_wlan_config("/wlan.json", wlan_config) ){
+    if( loadJson("/wlan.json", wlan_config) == 0 ){
       JsonObject networks = wlan_config.as<JsonObject>();
       Serial.printf("\r\nWifi setting: \r\n");
       for (JsonPair p : networks) {

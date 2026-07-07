@@ -389,6 +389,19 @@ int loadJson(String fname, JsonDocument& doc) {
   return -1;
 }
 
+int saveJson(String fname, JsonDocument doc) {
+  size_t doc_size = measureJson(doc);;
+  uint8_t *buff = (uint8_t *)malloc(doc_size +1);
+  if(buff) {
+    memset(buff, 0, doc_size +1);
+    serializeJson(doc, buff, doc_size+1);
+    saveFile(fname, (const char *)buff);
+    free(buff);
+    return 0;
+  }
+  return -1;
+}
+
 /**
  * Beep
  * 
@@ -652,23 +665,6 @@ bool connect_wlan(const char* filepath) {
       Serial.println("All Wifi attempts failed.");
     }
     return false;
-}
-
-bool load_wlan_config(const char* filepath, JsonDocument& doc) {
-    if(!isFileExists(String(filepath))) {
-      Serial.printf("WiFi config not found!: %s\r\n", filepath);
-      return false;
-    }
-    File file = getFileDescriptor(String(filepath));
-    DeserializationError error = deserializeJson(doc, file);
-    file.close();
-
-    if (error) {
-      Serial.printf("JSON Parse Error: %s\r\n", error.c_str());
-      return false;
-    }
-
-    return true;
 }
 
 void setupWifi(String conf_file){
