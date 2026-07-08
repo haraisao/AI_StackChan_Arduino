@@ -1,0 +1,75 @@
+
+<!doctype html>
+
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Web Serial API Console</title>
+
+<link rel="stylesheet" href="css/default.css">
+<script>
+    let port;
+
+    async function onConnectButtonClick() {
+        try {
+            port = await navigator.serial.requestPort();
+            await port.open({ baudRate: 115200 });
+
+            while (port.readable) {
+                const reader = port.readable.getReader();
+                try {
+                    while (true) {
+                        const { value, done } = await reader.read();
+                        if (done) {
+                            addSerial("Canceled\n");
+                            break;
+                        }
+                        const inputValue = new TextDecoder().decode(value);
+                        addSerial(inputValue);
+                    }
+                } catch (error) {
+                    addSerial("Error: Read" + error + "\n");
+                } finally {
+                    reader.releaseLock();
+                }
+            }
+        } catch (error) {
+            addSerial("Error: Open" + error + "\n");
+        }
+    }
+
+
+    function addSerial(msg) {
+        var textarea = document.getElementById('output-area');
+        textarea.value += msg;
+        textarea.scrollTop = textarea.scrollHeight;
+    }
+
+    async function sendSerial() {
+        var text = document.getElementById('send-input').value;
+        document.getElementById('send-input').value = "";
+
+        const encoder = new TextEncoder();
+        const writer = port.writable.getWriter();
+        await writer.write(encoder.encode(text + "\n"));
+        writer.releaseLock();
+    }
+
+</script>
+<div class="content"></div>
+<h1 class="top-title">Web Serial API Console</h1>
+<button onclick="onConnectButtonClick()">Connect</button>
+<br>
+
+<input type="text" id="send-input" style="width:500px;">
+<input type="button" value="Send" onclick="sendSerial()">
+<br>
+<textarea cols="80" rows="25" id="output-area" readonly></textarea>
+<script>
+    const input = document.getElementById('send-input');
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            sendSerial();
+        }
+    });
+</script>
